@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Admin — Guides</title>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Admin Guides" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Poppins', system-ui, sans-serif; }
+    textarea { field-sizing: content; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen antialiased text-gray-900">
+
+  <!-- ── Écran de connexion ──────────────────────────────────────── -->
+  <div id="login-screen" class="fixed inset-0 z-50 bg-stone-50 flex items-center justify-center px-6">
+    <div class="w-full max-w-sm">
+      <p class="text-[9px] tracking-[0.5em] uppercase text-stone-400 mb-5 text-center">Guides de voyage</p>
+      <h1 class="text-2xl font-semibold text-stone-900 tracking-tight mb-8 text-center">Administration</h1>
+      <input id="login-pwd" type="password" placeholder="Mot de passe" autocomplete="current-password"
+        class="w-full border border-stone-200 rounded-md px-4 py-3.5 text-sm focus:outline-none focus:border-stone-500 transition-colors bg-white mb-3" />
+      <div id="login-error" class="hidden text-xs text-red-500 bg-red-50 rounded-md px-4 py-3 mb-3"></div>
+      <button id="login-btn"
+        class="w-full py-4 bg-stone-900 text-white text-sm font-semibold rounded-md hover:bg-stone-700 active:bg-stone-800 transition-colors">
+        Accéder
+      </button>
+      <div class="mt-6 text-center">
+        <button type="button" id="show-import-btn" class="text-xs text-stone-400 hover:text-stone-600 transition-colors underline underline-offset-2">
+          Premier accès sur cet appareil
+        </button>
+      </div>
+      <div id="import-zone" class="hidden mt-4 border border-stone-200 rounded-lg p-4 bg-white">
+        <p class="text-[11px] text-stone-400 mb-3 leading-relaxed">Collez le code généré depuis l'appareil déjà configuré (Paramètres → Code d'accès).</p>
+        <textarea id="import-code" rows="3" placeholder="Coller le code ici…"
+          class="w-full border border-stone-200 rounded-md px-3 py-2.5 text-xs font-mono focus:outline-none focus:border-stone-400 bg-stone-50 resize-none mb-2"></textarea>
+        <button id="import-btn"
+          class="w-full py-3 border border-stone-300 text-stone-700 text-sm font-medium rounded-md hover:bg-stone-100 active:bg-stone-200 transition-colors">
+          Importer et accéder
+        </button>
+        <div id="import-error" class="hidden text-xs text-red-500 bg-red-50 rounded-md px-4 py-3 mt-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Première configuration ─────────────────────────────────── -->
+  <div id="setup-screen" class="hidden fixed inset-0 z-50 bg-stone-50 overflow-y-auto">
+    <div class="max-w-md mx-auto px-6 py-16">
+      <p class="text-[9px] tracking-[0.45em] uppercase text-stone-400 mb-6">Première ouverture</p>
+      <h1 class="text-2xl font-semibold text-stone-900 tracking-tight mb-2">Configuration</h1>
+      <p class="text-sm text-stone-500 mb-8 leading-relaxed">Définissez un mot de passe et connectez votre dépôt GitHub.</p>
+      <div class="space-y-4">
+        <div>
+          <label class="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-400 block mb-2">Mot de passe admin</label>
+          <input id="setup-pwd" type="password" placeholder="Choisir un mot de passe" autocomplete="new-password"
+            class="w-full border border-stone-200 rounded-md px-4 py-3.5 text-sm focus:outline-none focus:border-stone-400 bg-white" />
+        </div>
+        <div class="border-t border-stone-100 pt-4">
+          <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-400 mb-3">GitHub</p>
+          <div class="space-y-2.5">
+            <input id="setup-owner" type="text" placeholder="Propriétaire (username ou org)" autocapitalize="none" autocorrect="off"
+              class="w-full border border-stone-200 rounded-md px-4 py-3.5 text-sm focus:outline-none focus:border-stone-400 bg-white" />
+            <input id="setup-repo" type="text" placeholder="Nom du dépôt" autocapitalize="none" autocorrect="off"
+              class="w-full border border-stone-200 rounded-md px-4 py-3.5 text-sm focus:outline-none focus:border-stone-400 bg-white" />
+            <input id="setup-token" type="password" placeholder="Personal Access Token (ghp_…)" autocapitalize="none" autocorrect="off"
+              class="w-full border border-stone-200 rounded-md px-4 py-3.5 text-sm focus:outline-none focus:border-stone-400 bg-white font-mono" />
+          </div>
+        </div>
+        <div class="border-t border-stone-100 pt-3">
+          <label class="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-400 block mb-2">
+            Unsplash <span class="normal-case font-normal text-stone-300">— optionnel</span>
+          </label>
+          <input id="setup-unsplash" type="text" placeholder="Access Key Unsplash" autocapitalize="none" autocorrect="off"
+            class="w-full border border-stone-200 rounded-md px-4 py-3.5 text-sm focus:outline-none focus:border-stone-400 bg-white font-mono" />
+        </div>
+      </div>
+      <div id="setup-error" class="hidden mt-4 text-xs text-red-500 bg-red-50 rounded-md px-4 py-3"></div>
+      <button id="setup-btn"
+        class="mt-8 w-full py-4 bg-stone-900 text-white text-sm font-semibold rounded-md hover:bg-stone-700 active:bg-stone-800 transition-colors">
+        Configurer et accéder
+      </button>
+
+      <div class="mt-8 border-t border-stone-200 pt-6">
+        <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-400 mb-1">Déjà configuré sur un autre appareil ?</p>
+        <p class="text-[11px] text-stone-400 mb-3">Collez le code QR (Paramètres → Code d'accès) pour récupérer l'accès sans ressaisir la configuration.</p>
+        <textarea id="setup-import-code" rows="2" placeholder="Coller le code ici…"
+          class="w-full border border-stone-200 rounded-md px-4 py-3 text-xs font-mono focus:outline-none focus:border-stone-400 bg-white resize-none mb-2"></textarea>
+        <button id="setup-import-btn"
+          class="w-full py-3 border border-stone-300 text-stone-700 text-sm font-medium rounded-md hover:bg-stone-100 transition-colors">
+          Importer et accéder
+        </button>
+        <div id="setup-import-error" class="hidden text-xs text-red-500 bg-red-50 rounded-md px-4 py-3 mt-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modale paramètres ──────────────────────────────────────── -->
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 flex flex-col">
+    <div id="settings-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+    <div class="relative mt-auto md:m-auto bg-white rounded-t-xl md:rounded-lg w-full md:max-w-md flex flex-col max-h-[92vh] shadow-2xl">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+        <span class="text-sm font-semibold">Paramètres</span>
+        <button id="settings-close"
+          class="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-5 space-y-5">
+        <div>
+          <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 mb-3">GitHub (compte)</p>
+          <p class="text-[11px] text-gray-400 mb-2.5 leading-relaxed">Un seul token pour toutes les destinations. Le propriétaire/dépôt de chaque site se gère via le sélecteur de destination en haut de page.</p>
+          <div class="space-y-2.5">
+            <div>
+              <label class="text-[10px] text-gray-400 block mb-1">Personal Access Token</label>
+              <input id="cfg-token" type="password" autocapitalize="none" autocorrect="off"
+                class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white font-mono" />
+            </div>
+          </div>
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 block mb-2">
+            Unsplash <span class="normal-case font-normal text-gray-300">— optionnel</span>
+          </label>
+          <input id="cfg-unsplash" type="text" autocapitalize="none" autocorrect="off"
+            class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white font-mono" />
+        </div>
+        <div class="border-t border-gray-100 pt-4">
+          <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 mb-3">Changer le mot de passe</p>
+          <div class="space-y-2.5">
+            <input id="cfg-pwd" type="password" placeholder="Nouveau mot de passe" autocomplete="new-password"
+              class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white" />
+            <input id="cfg-pwd2" type="password" placeholder="Confirmer"
+              class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white" />
+          </div>
+        </div>
+        <div class="border-t border-gray-100 pt-4">
+          <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 mb-2">Autre appareil</p>
+          <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">Scannez ce QR code depuis votre autre appareil pour y accéder sans ressaisir la configuration.</p>
+          <div id="qr-zone" class="hidden flex-col items-center gap-3 mb-3">
+            <img id="qr-img" src="" alt="QR code" class="w-44 h-44 rounded-lg border border-gray-100" />
+            <button id="copy-link-btn" class="text-[11px] text-gray-400 hover:text-gray-700 underline underline-offset-2 transition-colors">Copier le lien</button>
+          </div>
+          <button id="export-cfg-btn"
+            class="w-full py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 active:bg-gray-100 transition-colors">
+            Afficher le QR code
+          </button>
+        </div>
+      </div>
+      <div id="cfg-error" class="hidden mx-5 mb-2 text-xs text-red-500 bg-red-50 rounded-md px-4 py-3"></div>
+      <div class="px-5 py-4 border-t border-gray-100 flex gap-2 shrink-0">
+        <button id="settings-logout" class="text-xs text-gray-400 hover:text-red-500 transition-colors py-2 px-3">Déconnexion</button>
+        <button id="cfg-save-btn"
+          class="flex-1 py-3 bg-gray-900 text-white text-sm font-semibold rounded-md hover:bg-gray-700 transition-colors">
+          Enregistrer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modale destinations ──────────────────────────────────────── -->
+  <div id="sites-modal" class="hidden fixed inset-0 z-50 flex flex-col">
+    <div id="sites-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+    <div class="relative mt-auto md:m-auto bg-white rounded-t-xl md:rounded-lg w-full md:max-w-md flex flex-col max-h-[92vh] shadow-2xl">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+        <span class="text-sm font-semibold">Nouvelle destination</span>
+        <button id="sites-close"
+          class="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-5 space-y-4">
+        <div>
+          <label class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 block mb-1.5">Nom de la destination</label>
+          <input id="site-label" type="text" placeholder="Ex : Bali"
+            class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white" />
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 block mb-1.5">Propriétaire GitHub</label>
+          <input id="site-owner" type="text" autocapitalize="none" autocorrect="off"
+            class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white" />
+        </div>
+        <div>
+          <label class="text-[10px] text-gray-400 block mb-1.5">Nom du dépôt</label>
+          <input id="site-repo" type="text" autocapitalize="none" autocorrect="off"
+            class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white font-mono" />
+        </div>
+        <div id="site-error" class="hidden text-xs text-red-500 bg-red-50 rounded-md px-4 py-3"></div>
+        <div class="flex flex-col gap-2 pt-1">
+          <button id="site-create-btn" type="button"
+            class="w-full py-3 bg-gray-900 text-white text-sm font-semibold rounded-md hover:bg-gray-700 transition-colors">
+            Créer automatiquement (depuis le template)
+          </button>
+          <button id="site-register-btn" type="button"
+            class="w-full py-3 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-100 transition-colors">
+            Enregistrer un dépôt existant
+          </button>
+          <p class="text-[10px] text-gray-400 leading-relaxed mt-1">« Créer automatiquement » génère le dépôt depuis <code class="font-mono">guide-site-template</code> et active GitHub Pages. « Enregistrer » ajoute simplement un dépôt déjà créé (ex. via le bouton « Use this template » sur GitHub) à la liste des destinations.</p>
+        </div>
+        <div class="border-t border-gray-100 pt-4">
+          <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 mb-2">Destinations enregistrées</p>
+          <div id="sites-list" class="space-y-1.5"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Sélecteur d'icône ──────────────────────────────────────── -->
+  <div id="icon-picker" class="hidden fixed inset-0 z-50 flex items-end md:items-center justify-center">
+    <div id="icon-picker-backdrop" class="absolute inset-0 bg-black/40"></div>
+    <div class="relative bg-white rounded-t-xl md:rounded-lg w-full md:max-w-sm p-5 shadow-2xl">
+      <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 mb-4">Choisir une icône</p>
+      <div id="icon-picker-grid" class="grid grid-cols-5 gap-2"></div>
+    </div>
+  </div>
+
+  <!-- ── Sélecteur type de section ──────────────────────────────── -->
+  <div id="section-type-picker" class="hidden fixed inset-0 z-50 flex items-end md:items-center justify-center">
+    <div id="section-type-backdrop" class="absolute inset-0 bg-black/40"></div>
+    <div class="relative bg-white rounded-t-xl md:rounded-lg w-full md:max-w-sm p-5 shadow-2xl">
+      <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 mb-4">Type de section</p>
+      <div class="grid grid-cols-2 gap-3">
+        <button id="pick-classic" type="button"
+          class="flex flex-col items-center gap-3 p-4 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 rounded-xl transition-colors border-2 border-transparent">
+          <div class="w-10 h-10 text-gray-500">
+            <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-linecap="round">
+              <rect x="6" y="10" width="28" height="5" rx="2" stroke-width="1.6"/>
+              <rect x="6" y="19" width="28" height="5" rx="2" stroke-width="1.6"/>
+              <rect x="6" y="28" width="18" height="5" rx="2" stroke-width="1.6"/>
+            </svg>
+          </div>
+          <div class="text-center">
+            <p class="text-sm font-semibold text-gray-800">Classique</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">Tips &amp; blocs</p>
+          </div>
+        </button>
+        <button id="pick-album" type="button"
+          class="flex flex-col items-center gap-3 p-4 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 rounded-xl transition-colors border-2 border-transparent">
+          <div class="w-10 h-10 text-gray-500">
+            <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="10" width="14" height="20" rx="2" stroke-width="1.6"/>
+              <rect x="22" y="10" width="14" height="9" rx="2" stroke-width="1.6"/>
+              <rect x="22" y="22" width="6" height="8" rx="1.5" stroke-width="1.6"/>
+              <rect x="30" y="22" width="6" height="8" rx="1.5" stroke-width="1.6"/>
+            </svg>
+          </div>
+          <div class="text-center">
+            <p class="text-sm font-semibold text-gray-800">Album</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">Photos &amp; lightbox</p>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Header ─────────────────────────────────────────────────── -->
+  <header class="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+    <div class="max-w-3xl mx-auto px-5 py-3 flex items-center gap-3">
+      <div class="flex-1 min-w-0 flex items-center gap-1.5">
+        <span class="text-sm font-semibold text-gray-900 shrink-0">Admin</span>
+        <span class="text-gray-300">|</span>
+        <select id="site-select"
+          class="text-sm text-gray-600 bg-transparent border-none focus:outline-none max-w-[150px] truncate cursor-pointer"></select>
+        <button id="site-add-btn" type="button" title="Nouvelle destination"
+          class="w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0 text-base leading-none">+</button>
+      </div>
+      <button id="settings-btn"
+        class="w-9 h-9 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" title="Paramètres">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" class="w-4 h-4">
+          <circle cx="10" cy="10" r="2.5"/>
+          <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.1 4.1l1.4 1.4M14.5 14.5l1.4 1.4M4.1 15.9l1.4-1.4M14.5 5.5l1.4-1.4" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button id="preview-btn"
+        class="text-xs text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-md px-3 py-2 transition-colors whitespace-nowrap hidden md:block">
+        Voir le site ↗
+      </button>
+      <button id="save-btn"
+        class="text-xs font-semibold bg-gray-900 text-white hover:bg-gray-700 active:bg-gray-800 rounded-md px-4 py-2 transition-colors whitespace-nowrap min-h-[36px]">
+        Publier
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Barre de statut ────────────────────────────────────────── -->
+  <div id="status-bar" class="hidden max-w-3xl mx-auto px-5 pt-5">
+    <div id="status-inner" class="rounded-md px-4 py-3 text-sm flex items-center gap-3"></div>
+  </div>
+
+  <!-- ── Toast ──────────────────────────────────────────────────── -->
+  <div id="toast"
+    class="fixed top-[60px] right-5 z-50 bg-gray-900 text-white text-xs px-4 py-2.5 rounded-md shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none flex items-center gap-2 max-w-xs">
+    <span id="toast-icon" class="text-green-400 text-sm">✓</span>
+    <span id="toast-text"></span>
+  </div>
+
+  <!-- ── Contenu principal ──────────────────────────────────────── -->
+  <main id="main" class="max-w-3xl mx-auto px-5 py-8 space-y-4 hidden">
+
+    <!-- Infos générales -->
+    <div class="bg-white rounded-md border border-gray-200 overflow-hidden">
+      <div class="px-5 py-3 bg-gray-50 border-b border-gray-100">
+        <span class="text-[10px] font-semibold tracking-[0.2em] uppercase text-gray-400">Infos générales</span>
+      </div>
+      <div class="p-5 space-y-3">
+        <div>
+          <label class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 block mb-1.5">Titre</label>
+          <input id="meta-title" type="text"
+            class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 transition-colors" />
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 block mb-1.5">Sous-titre</label>
+          <input id="meta-subtitle" type="text"
+            class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 transition-colors" />
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 block mb-1.5">Image de couverture</label>
+          <div class="space-y-2">
+            <div id="cover-preview-wrap" class="hidden rounded-md overflow-hidden border border-gray-100">
+              <img id="cover-preview-img" src="" alt="" class="w-full h-48 object-cover" />
+            </div>
+            <!-- Focal point — boutons codés en dur (pas de template literals ici) -->
+            <div id="cover-pos-row" style="display:none" class="items-center gap-2">
+              <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider shrink-0">Focus</span>
+              <div class="grid grid-cols-3 gap-px rounded-md overflow-hidden bg-gray-200" style="width:66px;height:50px">
+                <button type="button" data-cover-pos="top left"     class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↖</button>
+                <button type="button" data-cover-pos="top center"   class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↑</button>
+                <button type="button" data-cover-pos="top right"    class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↗</button>
+                <button type="button" data-cover-pos="center left"  class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">←</button>
+                <button type="button" data-cover-pos="center"       class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">·</button>
+                <button type="button" data-cover-pos="center right" class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">→</button>
+                <button type="button" data-cover-pos="bottom left"  class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↙</button>
+                <button type="button" data-cover-pos="bottom center" class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↓</button>
+                <button type="button" data-cover-pos="bottom right" class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↘</button>
+              </div>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <input id="meta-cover-url" type="url" placeholder="https://… ou laisser vide"
+                class="flex-1 min-w-0 border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 transition-colors"
+                oninput="updateCoverPreview()" />
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <button type="button" id="meta-cover-unsplash"
+                class="text-xs text-gray-500 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-md px-3 py-2.5 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="6"/><path d="m15 15 3 3" stroke-linecap="round"/></svg>
+                Chercher sur Unsplash
+              </button>
+              <label class="cursor-pointer shrink-0">
+                <span class="text-xs text-gray-500 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-md px-3 py-2.5 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13l4-4 3 3 3-4 4 5H3z"/><circle cx="13.5" cy="6.5" r="1.5"/><rect x="1" y="1" width="18" height="18" rx="3"/></svg>
+                  Upload
+                </span>
+                <input type="file" accept="image/*" class="hidden" id="meta-cover-file" />
+              </label>
+              <button type="button" id="meta-cover-clear"
+                class="hidden text-xs text-gray-400 hover:text-red-500 border border-gray-200 rounded-md px-3 py-2.5 transition-colors whitespace-nowrap">
+                Retirer
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sections -->
+    <div id="sections-container" class="space-y-4"></div>
+
+    <!-- Nouvelle section -->
+    <button id="add-section-btn"
+      class="w-full py-4 border-2 border-dashed border-gray-200 rounded-md text-sm text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors">
+      + Nouvelle section
+    </button>
+
+  </main>
+
+  <!-- ── Modale Unsplash ───────────────────────────────────────── -->
+  <div id="unsplash-modal" class="hidden fixed inset-0 z-50 flex flex-col">
+    <div id="unsplash-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative mt-auto md:m-auto bg-white rounded-t-xl md:rounded-lg w-full md:max-w-xl flex flex-col max-h-[85vh] md:max-h-[72vh] shadow-2xl">
+      <div class="flex items-center gap-3 p-4 border-b border-gray-100 shrink-0">
+        <div class="flex-1 flex items-center gap-2 bg-gray-50 rounded-md px-3.5 py-2.5">
+          <svg class="w-4 h-4 text-gray-400 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="6"/><path d="m15 15 3 3" stroke-linecap="round"/></svg>
+          <input id="unsplash-input" type="search" placeholder="Rechercher une photo…" autocomplete="off"
+            class="flex-1 bg-transparent text-sm focus:outline-none" />
+        </div>
+        <button id="unsplash-close"
+          class="w-9 h-9 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+        </button>
+      </div>
+      <div id="unsplash-results" class="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-2 content-start"></div>
+      <div class="shrink-0 px-4 py-2.5 border-t border-gray-100 text-center">
+        <span class="text-[10px] text-gray-400">Photos libres de droits par <a href="https://unsplash.com" target="_blank" class="underline">Unsplash</a></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ACCOUNT_KEY = 'mtq-gh-account';  // { password, token, unsplashKey }
+    const SITES_KEY   = 'mtq-gh-sites';    // [{ id, label, owner, repo }, …]
+    const ACTIVE_KEY  = 'mtq-gh-active';   // id du site actif
+    const TEMPLATE_REPO = 'guide-site-template';
+    function cacheKeyFor(siteId) { return 'mtq-admin-cache-' + siteId; }
+
+    /* ── Illustrations ─────────────────────────────────────────── */
+    const ILLUSTRATIONS = {
+      boussole:    `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="50" cy="50" r="34" stroke-width="1.8"/><circle cx="50" cy="50" r="4" fill="currentColor" stroke="none"/><line x1="50" y1="16" x2="50" y2="28" stroke-width="2"/><line x1="50" y1="72" x2="50" y2="84" stroke-width="2"/><line x1="16" y1="50" x2="28" y2="50" stroke-width="2"/><line x1="72" y1="50" x2="84" y2="50" stroke-width="2"/><path d="M50 20 L53.5 47 L50 53 L46.5 47Z" fill="currentColor" stroke="none" opacity="0.7"/></svg>`,
+      soleil:      `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="50" cy="50" r="18" stroke-width="1.8"/><line x1="50" y1="18" x2="50" y2="28" stroke-width="2"/><line x1="50" y1="72" x2="50" y2="82" stroke-width="2"/><line x1="18" y1="50" x2="28" y2="50" stroke-width="2"/><line x1="72" y1="50" x2="82" y2="50" stroke-width="2"/><line x1="29" y1="29" x2="36" y2="36" stroke-width="2"/><line x1="64" y1="64" x2="71" y2="71" stroke-width="2"/><line x1="71" y1="29" x2="64" y2="36" stroke-width="2"/><line x1="36" y1="64" x2="29" y2="71" stroke-width="2"/></svg>`,
+      volant:      `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="50" cy="50" r="33" stroke-width="1.8"/><circle cx="50" cy="50" r="9" stroke-width="1.8"/><line x1="50" y1="41" x2="50" y2="17" stroke-width="1.8"/><line x1="42.2" y1="45.5" x2="21" y2="62.5" stroke-width="1.8"/><line x1="57.8" y1="45.5" x2="79" y2="62.5" stroke-width="1.8"/></svg>`,
+      couverts:    `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="34" y1="78" x2="34" y2="50" stroke-width="1.8"/><line x1="27" y1="22" x2="27" y2="42" stroke-width="1.8"/><line x1="34" y1="22" x2="34" y2="42" stroke-width="1.8"/><line x1="41" y1="22" x2="41" y2="42" stroke-width="1.8"/><path d="M27 42 Q34 51 41 42" stroke-width="1.8"/><line x1="66" y1="22" x2="66" y2="78" stroke-width="1.8"/><path d="M66 22 Q78 34 66 55" stroke-width="1.8"/></svg>`,
+      surf:        `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 63 Q28 34 58 37 Q77 39 82 55 Q85 66 72 68 Q59 70 49 59 Q39 48 15 63Z" stroke-width="1.8"/><path d="M15 63 Q7 51 11 40" stroke-width="1.8"/><path d="M15 63 Q5 68 9 76" stroke-width="1.8"/><path d="M54 41 Q58 24 67 33" stroke-width="1.8"/><circle cx="73" cy="57" r="3" fill="currentColor" stroke="none"/></svg>`,
+      montagne:    `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10 76 L42 22 L60 44 L70 32 L90 76Z" stroke-width="1.8"/><line x1="20" y1="76" x2="27" y2="47" stroke-width="1.8"/><path d="M27 47 Q15 38 9 44" stroke-width="1.6"/><path d="M27 47 Q22 36 27 26" stroke-width="1.6"/><path d="M27 47 Q37 38 43 44" stroke-width="1.6"/></svg>`,
+      avion:       `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M50 12 L57 38 L84 52 L57 62 L63 80 L50 74 L37 80 L43 62 L16 52 L43 38Z" stroke-width="1.8"/></svg>`,
+      carte:       `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 24 L38 16 L62 26 L85 18 L85 76 L62 84 L38 74 L15 82Z" stroke-width="1.8"/><line x1="38" y1="16" x2="38" y2="74" stroke-width="1.4"/><line x1="62" y1="26" x2="62" y2="84" stroke-width="1.4"/><path d="M22 46 Q30 40 38 50" stroke-width="1.3"/></svg>`,
+      camera:      `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="12" y="36" width="76" height="50" rx="5" stroke-width="1.8"/><circle cx="50" cy="61" r="14" stroke-width="1.8"/><circle cx="50" cy="61" r="6" stroke-width="1.4"/><path d="M36 36 L41 26 L59 26 L64 36" stroke-width="1.8"/><circle cx="76" cy="44" r="3" fill="currentColor" stroke="none"/></svg>`,
+      cocktail:    `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 22 L50 60 L78 22Z" stroke-width="1.8"/><line x1="50" y1="60" x2="50" y2="80" stroke-width="1.8"/><line x1="32" y1="80" x2="68" y2="80" stroke-width="1.8"/><line x1="62" y1="22" x2="74" y2="10" stroke-width="1.5"/><circle cx="75" cy="9" r="3.5" fill="currentColor" stroke="none"/></svg>`,
+      bateau:      `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="50" y1="20" x2="50" y2="68" stroke-width="1.8"/><path d="M50 22 L20 62 L50 68Z" stroke-width="1.8"/><path d="M16 72 Q33 66 50 72 Q67 78 84 72" stroke-width="1.8"/><path d="M10 80 Q30 75 50 80 Q70 85 90 80" stroke-width="1.3" opacity="0.5"/></svg>`,
+      poisson:     `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="45" cy="50" rx="27" ry="16" stroke-width="1.8"/><path d="M72 50 L86 36 L86 64Z" stroke-width="1.8"/><circle cx="32" cy="45" r="3.5" fill="currentColor" stroke="none"/><path d="M52 40 Q62 50 52 60" stroke-width="1.3"/></svg>`,
+      palmier:     `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M48 80 Q52 56 56 30" stroke-width="2.2"/><path d="M56 30 Q42 12 26 20 Q36 30 56 30" stroke-width="1.8"/><path d="M56 30 Q72 10 88 18 Q76 30 56 30" stroke-width="1.8"/><path d="M56 30 Q34 28 20 42 Q30 44 56 30" stroke-width="1.8"/><path d="M56 30 Q76 30 86 44 Q72 46 56 30" stroke-width="1.8"/><line x1="36" y1="84" x2="62" y2="84" stroke-width="1.8"/></svg>`,
+      epingle:     `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M50 84 Q26 58 26 40 Q26 16 50 16 Q74 16 74 40 Q74 58 50 84Z" stroke-width="1.8"/><circle cx="50" cy="40" r="10" stroke-width="1.8"/></svg>`,
+      etoile:      `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M50 14 L58 38 L84 38 L63 54 L71 78 L50 62 L29 78 L37 54 L16 38 L42 38Z" stroke-width="1.8"/></svg>`,
+      coeur:       `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M50 80 Q16 58 16 36 Q16 18 34 18 Q44 18 50 30 Q56 18 66 18 Q84 18 84 36 Q84 58 50 80Z" stroke-width="1.8"/></svg>`,
+      vague:       `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M8 40 Q18 28 28 40 Q38 52 48 40 Q58 28 68 40 Q78 52 88 40" stroke-width="1.8"/><path d="M8 58 Q18 46 28 58 Q38 70 48 58 Q58 46 68 58 Q78 70 88 58" stroke-width="1.8"/></svg>`,
+      maison:      `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 52 L50 18 L86 52" stroke-width="1.8"/><path d="M24 46 L24 82 L76 82 L76 46" stroke-width="1.8"/><rect x="40" y="58" width="20" height="24" stroke-width="1.5"/><rect x="28" y="53" width="14" height="12" stroke-width="1.4"/><rect x="58" y="53" width="14" height="12" stroke-width="1.4"/></svg>`,
+      musique:     `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="40" y1="72" x2="40" y2="28" stroke-width="1.8"/><line x1="40" y1="28" x2="78" y2="18" stroke-width="1.8"/><line x1="78" y1="18" x2="78" y2="60" stroke-width="1.8"/><line x1="40" y1="46" x2="78" y2="36" stroke-width="1.4"/><ellipse cx="33" cy="73" rx="11" ry="7" stroke-width="1.8" transform="rotate(-15 33 73)"/><ellipse cx="71" cy="63" rx="11" ry="7" stroke-width="1.8" transform="rotate(-15 71 63)"/></svg>`,
+      sac:         `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="38" width="64" height="46" rx="4" stroke-width="1.8"/><path d="M36 38 Q36 20 50 20 Q64 20 64 38" stroke-width="1.8"/><line x1="18" y1="56" x2="82" y2="56" stroke-width="1.3"/></svg>`,
+      telephone:    `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="30" y="14" width="40" height="72" rx="6" stroke-width="1.8"/><line x1="44" y1="78" x2="56" y2="78" stroke-width="2"/><line x1="30" y1="24" x2="70" y2="24" stroke-width="1.4"/></svg>`,
+      portefeuille: `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="12" y="34" width="76" height="48" rx="5" stroke-width="1.8"/><path d="M12 48 L88 48" stroke-width="1.4"/><rect x="62" y="42" width="22" height="14" rx="3" stroke-width="1.6"/><circle cx="73" cy="49" r="3" fill="currentColor" stroke="none"/></svg>`,
+      sante:        `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="40" y="18" width="20" height="64" rx="5" stroke-width="1.8"/><rect x="18" y="40" width="64" height="20" rx="5" stroke-width="1.8"/></svg>`,
+      lune:         `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M62 22 Q30 28 28 52 Q26 76 54 82 Q30 80 18 58 Q10 32 34 18 Q46 12 62 22Z" stroke-width="1.8"/><circle cx="76" cy="28" r="3.5" fill="currentColor" stroke="none"/><circle cx="82" cy="48" r="2.5" fill="currentColor" stroke="none"/><circle cx="72" cy="66" r="2" fill="currentColor" stroke="none"/></svg>`,
+      flamme:       `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M50 84 Q22 72 22 50 Q22 30 38 20 Q32 36 44 38 Q36 24 52 12 Q48 32 64 36 Q80 42 78 60 Q76 76 50 84Z" stroke-width="1.8"/><path d="M50 72 Q36 64 38 52 Q40 44 50 46 Q60 44 62 52 Q64 64 50 72Z" stroke-width="1.4"/></svg>`,
+      velo:         `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="26" cy="66" r="16" stroke-width="1.8"/><circle cx="74" cy="66" r="16" stroke-width="1.8"/><path d="M26 66 L44 38 L62 66" stroke-width="1.8"/><path d="M44 38 L74 66" stroke-width="1.8"/><line x1="44" y1="38" x2="56" y2="36" stroke-width="1.8"/><line x1="56" y1="36" x2="56" y2="28" stroke-width="1.6"/><line x1="50" y1="28" x2="62" y2="28" stroke-width="1.8"/><line x1="38" y1="38" x2="50" y2="38" stroke-width="1.8"/></svg>`,
+      botte:        `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M26 82 L26 40 Q26 28 36 28 L50 28 L50 46 L58 56 Q70 56 78 62 L82 82Z" stroke-width="1.8"/><line x1="20" y1="82" x2="86" y2="82" stroke-width="1.8"/></svg>`,
+      boutique:     `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="40" width="64" height="46" rx="4" stroke-width="1.8"/><path d="M32 40 Q32 22 50 22 Q68 22 68 40" stroke-width="1.8"/><line x1="18" y1="58" x2="82" y2="58" stroke-width="1.3"/></svg>`,
+      pluie:        `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 52 Q16 40 26 32 Q28 18 44 20 Q48 10 62 14 Q76 10 80 24 Q90 26 90 42 Q90 54 76 54 L28 54 Q20 54 20 52Z" stroke-width="1.8"/><line x1="34" y1="64" x2="30" y2="80" stroke-width="2"/><line x1="50" y1="64" x2="46" y2="80" stroke-width="2"/><line x1="66" y1="64" x2="62" y2="80" stroke-width="2"/></svg>`,
+      billet:       `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="32" width="80" height="36" rx="4" stroke-width="1.8"/><path d="M38 32 L38 68" stroke-width="1.2" stroke-dasharray="4 3"/><circle cx="24" cy="50" r="8" stroke-width="1.6"/><line x1="48" y1="42" x2="82" y2="42" stroke-width="1.3"/><line x1="48" y1="50" x2="82" y2="50" stroke-width="1.3"/><line x1="48" y1="58" x2="82" y2="58" stroke-width="1.3"/></svg>`,
+      parasol:      `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="50" y1="52" x2="50" y2="82" stroke-width="1.8"/><path d="M42 82 Q50 76 58 82" stroke-width="1.6"/><path d="M12 56 Q50 8 88 56" stroke-width="1.8"/><path d="M12 56 Q50 48 88 56" stroke-width="1.4"/><line x1="50" y1="52" x2="14" y2="56" stroke-width="1.2"/><line x1="50" y1="52" x2="86" y2="56" stroke-width="1.2"/><line x1="50" y1="52" x2="28" y2="26" stroke-width="1.2"/><line x1="50" y1="52" x2="72" y2="26" stroke-width="1.2"/></svg>`,
+      fleur:        `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="50" cy="24" rx="10" ry="16" stroke-width="1.8"/><ellipse cx="50" cy="76" rx="10" ry="16" stroke-width="1.8"/><ellipse cx="24" cy="50" rx="16" ry="10" stroke-width="1.8"/><ellipse cx="76" cy="50" rx="16" ry="10" stroke-width="1.8"/><ellipse cx="29" cy="29" rx="10" ry="16" stroke-width="1.6" transform="rotate(-45 29 29)"/><ellipse cx="71" cy="29" rx="10" ry="16" stroke-width="1.6" transform="rotate(45 71 29)"/><ellipse cx="29" cy="71" rx="10" ry="16" stroke-width="1.6" transform="rotate(45 29 71)"/><ellipse cx="71" cy="71" rx="10" ry="16" stroke-width="1.6" transform="rotate(-45 71 71)"/><circle cx="50" cy="50" r="10" fill="currentColor" stroke="none"/></svg>`,
+      /* alias pour compatibilité sections existantes */
+      generalites: `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="50" cy="50" r="34" stroke-width="1.8"/><circle cx="50" cy="50" r="4" fill="currentColor" stroke="none"/><line x1="50" y1="16" x2="50" y2="28" stroke-width="2"/><line x1="50" y1="72" x2="50" y2="84" stroke-width="2"/><line x1="16" y1="50" x2="28" y2="50" stroke-width="2"/><line x1="72" y1="50" x2="84" y2="50" stroke-width="2"/><path d="M50 20 L53.5 47 L50 53 L46.5 47Z" fill="currentColor" stroke="none" opacity="0.7"/></svg>`,
+      mood:        `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="50" cy="50" r="18" stroke-width="1.8"/><line x1="50" y1="18" x2="50" y2="28" stroke-width="2"/><line x1="50" y1="72" x2="50" y2="82" stroke-width="2"/><line x1="18" y1="50" x2="28" y2="50" stroke-width="2"/><line x1="72" y1="50" x2="82" y2="50" stroke-width="2"/><line x1="29" y1="29" x2="36" y2="36" stroke-width="2"/><line x1="64" y1="64" x2="71" y2="71" stroke-width="2"/><line x1="71" y1="29" x2="64" y2="36" stroke-width="2"/><line x1="36" y1="64" x2="29" y2="71" stroke-width="2"/></svg>`,
+      transports:  `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="50" cy="50" r="33" stroke-width="1.8"/><circle cx="50" cy="50" r="9" stroke-width="1.8"/><line x1="50" y1="41" x2="50" y2="17" stroke-width="1.8"/><line x1="42.2" y1="45.5" x2="21" y2="62.5" stroke-width="1.8"/><line x1="57.8" y1="45.5" x2="79" y2="62.5" stroke-width="1.8"/></svg>`,
+      manger:      `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="34" y1="78" x2="34" y2="50" stroke-width="1.8"/><line x1="27" y1="22" x2="27" y2="42" stroke-width="1.8"/><line x1="34" y1="22" x2="34" y2="42" stroke-width="1.8"/><line x1="41" y1="22" x2="41" y2="42" stroke-width="1.8"/><path d="M27 42 Q34 51 41 42" stroke-width="1.8"/><line x1="66" y1="22" x2="66" y2="78" stroke-width="1.8"/><path d="M66 22 Q78 34 66 55" stroke-width="1.8"/></svg>`,
+      activites:   `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 63 Q28 34 58 37 Q77 39 82 55 Q85 66 72 68 Q59 70 49 59 Q39 48 15 63Z" stroke-width="1.8"/><path d="M15 63 Q7 51 11 40" stroke-width="1.8"/><path d="M15 63 Q5 68 9 76" stroke-width="1.8"/><path d="M54 41 Q58 24 67 33" stroke-width="1.8"/><circle cx="73" cy="57" r="3" fill="currentColor" stroke="none"/></svg>`,
+      nature:      `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10 76 L42 22 L60 44 L70 32 L90 76Z" stroke-width="1.8"/><line x1="20" y1="76" x2="27" y2="47" stroke-width="1.8"/><path d="M27 47 Q15 38 9 44" stroke-width="1.6"/><path d="M27 47 Q22 36 27 26" stroke-width="1.6"/><path d="M27 47 Q37 38 43 44" stroke-width="1.6"/></svg>`,
+    };
+    function illus(id) { return ILLUSTRATIONS[id] || ILLUSTRATIONS.boussole; }
+
+    /* ── Config / Auth (compte GitHub, partagé entre toutes les destinations) ── */
+    const SES_KEY = 'mtq-admin-session';
+    function loadConfig() { try { return JSON.parse(localStorage.getItem(ACCOUNT_KEY)) || null; } catch { return null; } }
+    function saveConfig(c) { localStorage.setItem(ACCOUNT_KEY, JSON.stringify(c)); }
+    function isLoggedIn()  { return localStorage.getItem(SES_KEY) === '1'; }
+    function setLoggedIn() { localStorage.setItem(SES_KEY, '1'); }
+    function logout()      { localStorage.removeItem(SES_KEY); location.reload(); }
+
+    /* ── Destinations (sites) ─────────────────────────────────────── */
+    function loadSites() { try { return JSON.parse(localStorage.getItem(SITES_KEY)) || []; } catch { return []; } }
+    function saveSites(list) { localStorage.setItem(SITES_KEY, JSON.stringify(list)); }
+    function getActiveSiteId() { return localStorage.getItem(ACTIVE_KEY) || ''; }
+    function setActiveSiteId(id) { localStorage.setItem(ACTIVE_KEY, id); }
+    function getActiveSite() {
+      const id = getActiveSiteId();
+      return loadSites().find(s => s.id === id) || null;
+    }
+    // cfg (compte) + owner/repo du site actif, pour les appels GitHub
+    function effectiveCfg() {
+      const acc = loadConfig(); const site = getActiveSite();
+      if (!acc || !site) return null;
+      return { ...acc, owner: site.owner, repo: site.repo };
+    }
+
+    /* ── base64 UTF-8 ───────────────────────────────────────────── */
+    function toBase64(str) {
+      const bytes = new TextEncoder().encode(str); let b = '';
+      for (const x of bytes) b += String.fromCharCode(x);
+      return btoa(b);
+    }
+    function fromBase64(b64) {
+      const bin = atob(b64); const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new TextDecoder().decode(bytes);
+    }
+
+    /* ── GitHub API ──────────────────────────────────────────────── */
+    async function ghFetch(cfg, method, body) {
+      const url  = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/data.json`;
+      const opts = { method, headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' } };
+      if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+      const resp = await fetch(url, opts);
+      if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.message || `HTTP ${resp.status}`); }
+      return resp.json();
+    }
+    async function loadFromGitHub(cfg) {
+      const file = await ghFetch(cfg, 'GET');
+      window._fileSha = file.sha;
+      const text = file.content ? fromBase64(file.content.replace(/\n/g,'')) : await (await fetch(file.download_url)).text();
+      return JSON.parse(text);
+    }
+    async function saveToGitHub(cfg, data) {
+      data._ts = Date.now(); // horodatage pour éviter que index.html écrase avec l'ancien data.json
+      const payload = { message: 'Mise à jour du guide (' + new Date().toLocaleDateString('fr-FR') + ')', content: toBase64(JSON.stringify(data, null, 2)), sha: window._fileSha };
+      let r;
+      try {
+        r = await ghFetch(cfg, 'PUT', payload);
+      } catch(e) {
+        // SHA périmé (commit git direct entre-temps) → re-fetch le SHA courant et réessaie
+        if (e.message && e.message.includes('does not match')) {
+          const file = await ghFetch(cfg, 'GET');
+          window._fileSha = file.sha;
+          payload.sha = file.sha;
+          r = await ghFetch(cfg, 'PUT', payload);
+        } else { throw e; }
+      }
+      window._fileSha = r.content.sha;
+      const site = getActiveSite();
+      if (site) { try { localStorage.setItem(cacheKeyFor(site.id), JSON.stringify(data)); } catch {} }
+    }
+
+    /* ── Créer un dépôt de destination depuis le template ─────────── */
+    // templateOwner : propriétaire du dépôt guide-site-template (= owner de la nouvelle destination, même compte)
+    async function generateSiteRepo(token, templateOwner, owner, repoName) {
+      const url = `https://api.github.com/repos/${templateOwner}/${TEMPLATE_REPO}/generate`;
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ owner, name: repoName, private: false, include_all_branches: false }),
+      });
+      if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.message || `HTTP ${resp.status}`); }
+      return resp.json();
+    }
+    async function enableGitHubPages(token, owner, repoName) {
+      const url = `https://api.github.com/repos/${owner}/${repoName}/pages`;
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ build_type: 'legacy', source: { branch: 'main', path: '/' } }),
+      });
+      if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.message || `HTTP ${resp.status}`); }
+      return resp.json();
+    }
+
+    /* ── UI helpers ──────────────────────────────────────────────── */
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    function showToast(text, isError) {
+      const t = document.getElementById('toast');
+      document.getElementById('toast-icon').textContent = isError ? '✕' : '✓';
+      document.getElementById('toast-icon').className   = isError ? 'text-red-400 text-sm' : 'text-green-400 text-sm';
+      document.getElementById('toast-text').textContent = text;
+      t.style.opacity = '1';
+      setTimeout(() => { t.style.opacity = '0'; }, isError ? 4000 : 2800);
+    }
+
+    function setStatus(type, html) {
+      const bar = document.getElementById('status-bar'), inner = document.getElementById('status-inner');
+      if (!type) { bar.classList.add('hidden'); return; }
+      inner.className = 'rounded-md px-4 py-3 text-sm flex items-center gap-3 ' + (type === 'error' ? 'bg-red-50 text-red-600' : 'bg-stone-100 text-stone-500');
+      inner.innerHTML = html;
+      bar.classList.remove('hidden');
+    }
+
+    function setSaveLoading(on) {
+      const btn = document.getElementById('save-btn');
+      btn.disabled = on; btn.textContent = on ? 'Publication…' : 'Publier';
+      btn.className = on
+        ? 'text-xs font-semibold bg-gray-400 text-white rounded-md px-4 py-2 whitespace-nowrap min-h-[36px] cursor-not-allowed'
+        : 'text-xs font-semibold bg-gray-900 text-white hover:bg-gray-700 active:bg-gray-800 rounded-md px-4 py-2 transition-colors whitespace-nowrap min-h-[36px]';
+    }
+
+    function resizeImage(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader(); reader.onerror = reject;
+        reader.onload = e => {
+          const img = new Image(); img.onerror = reject;
+          img.onload = () => {
+            const MAX = 800, scale = Math.min(1, MAX / Math.max(img.width, img.height));
+            const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+            const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.75));
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.max(52, el.scrollHeight) + 'px'; }
+
+    function resizeImageForAlbum(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader(); reader.onerror = reject;
+        reader.onload = e => {
+          const img = new Image(); img.onerror = reject;
+          img.onload = () => {
+            const MAX = 1600, scale = Math.min(1, MAX / Math.max(img.width, img.height));
+            const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+            const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve({ src: canvas.toDataURL('image/jpeg', 0.82), aspect: +(img.width / img.height).toFixed(3), caption: '' });
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    /* ── Sélecteur d'icône ───────────────────────────────────────── */
+    let _iconCb = null;
+    const ICON_KEYS = ['boussole','soleil','volant','couverts','surf','montagne','avion','carte','camera','cocktail','bateau','poisson','palmier','epingle','etoile','coeur','vague','maison','musique','sac','telephone','portefeuille','sante','lune','flamme','velo','botte','boutique','pluie','billet','parasol','fleur'];
+    function openIconPicker(current, cb) {
+      _iconCb = cb;
+      const grid = document.getElementById('icon-picker-grid');
+      grid.innerHTML = '';
+      ICON_KEYS.forEach(key => {
+        const btn = document.createElement('button'); btn.type = 'button';
+        const active = key === current;
+        btn.className = `w-14 h-14 p-2.5 rounded-md transition-all ${active ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`;
+        btn.title = key;
+        btn.innerHTML = ILLUSTRATIONS[key];
+        btn.addEventListener('click', () => {
+          if (_iconCb) _iconCb(key);
+          document.getElementById('icon-picker').classList.add('hidden'); _iconCb = null;
+        });
+        grid.appendChild(btn);
+      });
+      document.getElementById('icon-picker').classList.remove('hidden');
+    }
+    document.getElementById('icon-picker-backdrop').addEventListener('click', () => {
+      document.getElementById('icon-picker').classList.add('hidden'); _iconCb = null;
+    });
+
+    /* ── Photo UI ────────────────────────────────────────────────── */
+    function updatePhotoUI(row, photoData) {
+      const preview  = row.querySelector('[data-photo-preview]');
+      const img      = row.querySelector('[data-photo-img]');
+      const label    = row.querySelector('[data-photo-label]');
+      const removeBtn = row.querySelector('[data-remove-photo]');
+      const posRow      = row.querySelector('[data-position-row]');
+      const textStyleRow = row.querySelector('[data-text-style-row]');
+      if (photoData) {
+        preview.classList.remove('hidden'); img.src = photoData; label.textContent = 'Changer';
+        removeBtn.classList.remove('hidden');
+        posRow?.classList.remove('hidden');
+        textStyleRow?.classList.add('hidden');
+      } else {
+        preview.classList.add('hidden'); img.src = ''; label.textContent = '+ Photo';
+        removeBtn.classList.add('hidden');
+        posRow?.classList.add('hidden');
+        textStyleRow?.classList.remove('hidden');
+        row._objectPosition = 'center'; setPosActive(row, 'center');
+      }
+    }
+
+    function setLayoutActive(row, layout) {
+      const norm = layout === 'default' ? '1x1' : layout === 'wide' ? '2x1' : layout || '1x1';
+      row.querySelectorAll('[data-layout-opt]').forEach(btn => {
+        const active = btn.dataset.layoutOpt === norm;
+        btn.style.background = active ? '#111827' : '#f9fafb';
+        btn.style.color      = active ? '#ffffff' : '#9ca3af';
+      });
+    }
+
+    function setTextStyleActive(row, style) {
+      const norm = style || 'card';
+      row.querySelectorAll('[data-text-style-opt]').forEach(btn => {
+        const active = btn.dataset.textStyleOpt === norm;
+        btn.style.background = active ? '#111827' : '#f3f4f6';
+        btn.style.color      = active ? '#ffffff' : '#6b7280';
+      });
+    }
+
+    function setPosActive(row, pos) {
+      row.querySelectorAll('[data-pos-opt]').forEach(btn => {
+        const a = btn.dataset.posOpt === pos;
+        btn.style.background = a ? '#1c1917' : ''; btn.style.color = a ? '#fff' : ''; btn.style.fontWeight = a ? '700' : '';
+      });
+    }
+
+    /* ── Ligne tip ───────────────────────────────────────────────── */
+    function createItemRow(item) {
+      const row = document.createElement('div');
+      row.dataset.itemRow = '1';
+      row.className = 'bg-gray-50 rounded-md p-3 space-y-2';
+      row.innerHTML = `
+        <div class="flex gap-2 items-stretch">
+          <button type="button" data-drag-handle title="Déplacer"
+            style="cursor:grab;display:flex;align-items:center;padding:4px 5px;border:none;background:none;border-radius:4px;flex-shrink:0;touch-action:none;-webkit-user-select:none;user-select:none;align-self:stretch">
+            <svg viewBox="0 0 8 14" width="10" height="14" fill="#d1d5db">
+              <circle cx="2" cy="2" r="1.2"/><circle cx="6" cy="2" r="1.2"/>
+              <circle cx="2" cy="7" r="1.2"/><circle cx="6" cy="7" r="1.2"/>
+              <circle cx="2" cy="12" r="1.2"/><circle cx="6" cy="12" r="1.2"/>
+            </svg>
+          </button>
+          <div class="flex-1 space-y-1.5 min-w-0">
+            <input data-field="title" type="text" placeholder="Titre du tip…"
+              class="w-full border border-gray-200 rounded-md px-3 py-2 text-sm font-medium bg-white focus:outline-none focus:border-gray-400 transition-colors" />
+            <textarea data-field="text" rows="2" placeholder="Texte du tip…"
+              class="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm resize-none bg-white focus:outline-none focus:border-gray-400 transition-colors leading-relaxed min-h-[52px]"></textarea>
+          </div>
+          <div class="flex flex-col gap-1 shrink-0 pt-0.5">
+            <button type="button" data-action="delete" class="w-9 h-9 flex items-center justify-center rounded-md text-gray-400 hover:text-red-500 hover:bg-white transition-colors text-xl leading-none" title="Supprimer">×</button>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 pl-1">
+          <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-10 shrink-0">Lien</span>
+          <input data-field="url" type="url" inputmode="url" placeholder="https://… ou tel:+596…"
+            class="flex-1 border border-gray-200 rounded-md px-2.5 py-2 text-xs text-gray-600 bg-white focus:outline-none focus:border-gray-400 transition-colors min-h-[36px]" />
+        </div>
+        <div class="flex items-center gap-2 pl-1">
+          <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-10 shrink-0">Photo</span>
+          <div class="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+            <div data-photo-preview class="w-14 h-10 rounded-md overflow-hidden bg-gray-200 shrink-0 hidden">
+              <img data-photo-img src="" alt="" class="w-full h-full object-cover" />
+            </div>
+            <label class="cursor-pointer shrink-0">
+              <span data-photo-label class="text-xs text-gray-500 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-md px-2.5 py-2 inline-flex items-center transition-colors whitespace-nowrap min-h-[36px]">+ Photo</span>
+              <input type="file" accept="image/*" class="hidden" data-photo-input />
+            </label>
+            <button type="button" data-unsplash-btn
+              class="text-xs text-gray-400 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-md px-2 py-2 inline-flex items-center gap-1 transition-colors whitespace-nowrap min-h-[36px] shrink-0">
+              <svg class="w-3 h-3" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="6"/><path d="m15 15 3 3" stroke-linecap="round"/></svg>
+              Unsplash
+            </button>
+            <button type="button" data-remove-photo class="hidden text-xs text-gray-400 hover:text-red-500 transition-colors py-2 px-1 min-h-[36px] whitespace-nowrap">Retirer</button>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 pl-1" data-layout-row>
+          <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-10 shrink-0">Format</span>
+          <!-- Grille 3×2 : ligne = rangées (1 ou 2), colonne = colonnes (1, 2, 3) -->
+          <div style="display:grid;grid-template-columns:repeat(3,44px);gap:3px;background:#f3f4f6;border-radius:7px;padding:3px">
+            <button type="button" data-layout-opt="1x1" title="1 rangée · 1 colonne"
+              style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;border-radius:5px;cursor:pointer;transition:background .12s,color .12s">
+              <span style="display:block;width:12px;height:12px;background:currentColor;border-radius:2px"></span>
+            </button>
+            <button type="button" data-layout-opt="1x2" title="1 rangée · 2 colonnes"
+              style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;border-radius:5px;cursor:pointer;transition:background .12s,color .12s">
+              <span style="display:block;width:24px;height:12px;background:currentColor;border-radius:2px"></span>
+            </button>
+            <button type="button" data-layout-opt="1x3" title="1 rangée · pleine largeur"
+              style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;border-radius:5px;cursor:pointer;transition:background .12s,color .12s">
+              <span style="display:block;width:34px;height:12px;background:currentColor;border-radius:2px"></span>
+            </button>
+            <button type="button" data-layout-opt="2x1" title="2 rangées · 1 colonne"
+              style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;border-radius:5px;cursor:pointer;transition:background .12s,color .12s">
+              <span style="display:block;width:12px;height:24px;background:currentColor;border-radius:2px"></span>
+            </button>
+            <button type="button" data-layout-opt="2x2" title="2 rangées · 2 colonnes"
+              style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;border-radius:5px;cursor:pointer;transition:background .12s,color .12s">
+              <span style="display:block;width:24px;height:24px;background:currentColor;border-radius:2px"></span>
+            </button>
+            <button type="button" data-layout-opt="2x3" title="2 rangées · pleine largeur"
+              style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;border-radius:5px;cursor:pointer;transition:background .12s,color .12s">
+              <span style="display:block;width:34px;height:24px;background:currentColor;border-radius:2px"></span>
+            </button>
+          </div>
+        </div>
+        <div class="flex items-start gap-2 pl-1 hidden" data-text-style-row>
+          <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-10 shrink-0 pt-1">Style</span>
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center gap-1.5">
+              <span style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#d1d5db;width:24px;flex-shrink:0">Plat</span>
+              <div class="flex gap-1 flex-wrap">
+                <button type="button" data-text-style-opt="editorial" style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Édito</button>
+                <button type="button" data-text-style-opt="pullquote" style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Citation</button>
+                <button type="button" data-text-style-opt="stat"      style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Stat</button>
+                <button type="button" data-text-style-opt="rubrique"  style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Rubrique</button>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#d1d5db;width:24px;flex-shrink:0">Fond</span>
+              <div class="flex gap-1 flex-wrap">
+                <button type="button" data-text-style-opt="card"    style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Carte</button>
+                <button type="button" data-text-style-opt="sombre"  style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Sombre</button>
+                <button type="button" data-text-style-opt="note"    style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Note</button>
+                <button type="button" data-text-style-opt="encadre" style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Encadré</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 pl-1 hidden" data-position-row>
+          <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-10 shrink-0">Focus</span>
+          <div class="grid grid-cols-3 gap-px rounded-md overflow-hidden bg-gray-200" style="width:66px;height:50px">
+            <button type="button" data-pos-opt="top left"      class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↖</button>
+            <button type="button" data-pos-opt="top center"    class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↑</button>
+            <button type="button" data-pos-opt="top right"     class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↗</button>
+            <button type="button" data-pos-opt="center left"   class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">←</button>
+            <button type="button" data-pos-opt="center"        class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">·</button>
+            <button type="button" data-pos-opt="center right"  class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">→</button>
+            <button type="button" data-pos-opt="bottom left"   class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↙</button>
+            <button type="button" data-pos-opt="bottom center" class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↓</button>
+            <button type="button" data-pos-opt="bottom right"  class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↘</button>
+          </div>
+        </div>
+      `;
+
+      const ta = row.querySelector('textarea');
+      ta.value = item.text || '';
+      ta.addEventListener('input', () => autoResize(ta));
+      requestAnimationFrame(() => autoResize(ta));
+
+      row.querySelector('[data-field="url"]').value   = item.url   || '';
+      row.querySelector('[data-field="title"]').value = item.title || '';
+
+      row._photo          = item.photo          || '';
+      row._layout = (function(l){ return l==='default'?'1x1':l==='wide'?'2x1':l||'1x1'; })(item.layout);
+      row._objectPosition = item.objectPosition || 'center';
+      row._textStyle      = item.textStyle      || 'editorial';
+
+      setLayoutActive(row, row._layout);
+      setTextStyleActive(row, row._textStyle);
+      setPosActive(row, row._objectPosition);
+      updatePhotoUI(row, row._photo);
+
+      row.querySelectorAll('[data-layout-opt]').forEach(btn => btn.addEventListener('click', () => {
+        row._layout = btn.dataset.layoutOpt; setLayoutActive(row, row._layout);
+      }));
+      row.querySelectorAll('[data-text-style-opt]').forEach(btn => btn.addEventListener('click', () => {
+        row._textStyle = btn.dataset.textStyleOpt; setTextStyleActive(row, row._textStyle);
+      }));
+      row.querySelectorAll('[data-pos-opt]').forEach(btn => btn.addEventListener('click', () => {
+        row._objectPosition = btn.dataset.posOpt; setPosActive(row, row._objectPosition);
+      }));
+      row.querySelector('[data-photo-input]').addEventListener('change', async e => {
+        const f = e.target.files[0]; if (!f) return;
+        try { const d = await resizeImage(f); row._photo = d; updatePhotoUI(row, d); } catch {}
+        e.target.value = '';
+      });
+      row.querySelector('[data-unsplash-btn]').addEventListener('click', () => {
+        openUnsplashSearch(url => { row._photo = url; updatePhotoUI(row, url); });
+      });
+      row.querySelector('[data-remove-photo]').addEventListener('click', () => { row._photo = ''; updatePhotoUI(row, ''); });
+      row.addEventListener('click', e => {
+        const a = e.target.closest('[data-action]')?.dataset.action;
+        if (a === 'delete') { row.dataset.deleted='1'; row.style.cssText='opacity:0;transition:opacity .15s'; setTimeout(()=>row.remove(),150); }
+      });
+      return row;
+    }
+
+    /* ── Carte section ───────────────────────────────────────────── */
+    function createSectionCard(section) {
+      const card = document.createElement('div');
+      card.dataset.sectionId   = section.id;
+      card.dataset.sectionIcon = section.icon || section.id || 'generalites';
+      card.className = 'bg-white rounded-md border border-gray-200 overflow-hidden';
+
+      const iconKey = section.icon || section.id || 'generalites';
+      const header = document.createElement('div');
+      header.className = 'px-4 py-3.5 bg-gray-50 border-b border-gray-100 flex items-center gap-3';
+      header.innerHTML = `
+        <button type="button" data-drag-handle title="Déplacer"
+          style="cursor:grab;display:flex;align-items:center;padding:6px 5px;border:none;background:none;border-radius:4px;flex-shrink:0;touch-action:none;-webkit-user-select:none;user-select:none">
+          <svg viewBox="0 0 8 14" width="10" height="14" fill="#d1d5db">
+            <circle cx="2" cy="2" r="1.2"/><circle cx="6" cy="2" r="1.2"/>
+            <circle cx="2" cy="7" r="1.2"/><circle cx="6" cy="7" r="1.2"/>
+            <circle cx="2" cy="12" r="1.2"/><circle cx="6" cy="12" r="1.2"/>
+          </svg>
+        </button>
+        <button type="button" data-icon-btn title="Changer l'icône"
+          class="w-9 h-9 shrink-0 p-1 rounded-md text-gray-700 hover:text-gray-900 hover:bg-white transition-colors cursor-pointer">
+          ${illus(iconKey)}
+        </button>
+        <input data-field="section-title" type="text" value="${esc(section.title)}"
+          class="flex-1 font-semibold text-sm text-gray-700 bg-transparent border-0 focus:outline-none min-h-[36px]" />
+        <div class="flex items-center gap-0.5 shrink-0">
+          <button type="button" data-collapse title="Développer / Réduire"
+            style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:none;border:none;cursor:pointer;flex-shrink:0;touch-action:manipulation">
+            <span data-chevron style="display:inline-block;width:8px;height:8px;border-right:2px solid #9ca3af;border-bottom:2px solid #9ca3af;transform:rotate(45deg);transition:transform .2s;margin-top:-4px"></span>
+          </button>
+          <button type="button" data-sec-delete title="Supprimer la section"
+            class="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors text-lg leading-none ml-2">×</button>
+        </div>
+      `;
+      card.appendChild(header);
+
+      const body = document.createElement('div');
+      body.dataset.body = '1';
+      body.className = 'p-4 space-y-2';
+      // Réduire par défaut sur mobile
+      const startCollapsed = window.innerWidth < 768;
+      if (startCollapsed) body.style.display = 'none';
+
+      (section.items || []).forEach(item => body.appendChild(createItemRow(item)));
+      card.appendChild(body);
+
+      const footer = document.createElement('div');
+      footer.className = 'px-4 py-3 border-t border-gray-100 bg-gray-50/50';
+      footer.innerHTML = `<button type="button" data-add-item
+        class="text-xs text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-1.5 py-2 min-h-[44px]">
+        <span class="text-base font-light leading-none">+</span> Ajouter un tip
+      </button>`;
+      card.appendChild(footer);
+
+      header.querySelector('[data-icon-btn]').addEventListener('click', () => {
+        openIconPicker(card.dataset.sectionIcon, key => {
+          card.dataset.sectionIcon = key;
+          header.querySelector('[data-icon-btn]').innerHTML = illus(key);
+        });
+      });
+      const collapseBtn = header.querySelector('[data-collapse]');
+      const chevron = collapseBtn.querySelector('[data-chevron]');
+      function setCollapsed(on) {
+        body.style.display = on ? 'none' : 'block';
+        if (chevron) chevron.style.transform = on ? 'rotate(-45deg)' : 'rotate(45deg)';
+      }
+      setCollapsed(startCollapsed);
+      collapseBtn.onclick = function(e) {
+        e.stopPropagation();
+        setCollapsed(body.style.display !== 'none');
+      };
+      let _deleteArmed = false, _deleteTimer = null;
+      header.querySelector('[data-sec-delete]').addEventListener('click', function() {
+        const btn = this;
+        if (!_deleteArmed) {
+          _deleteArmed = true;
+          btn.textContent = 'Supprimer ?';
+          btn.className = 'text-[10px] font-semibold px-2.5 py-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200 transition-colors ml-2 whitespace-nowrap';
+          _deleteTimer = setTimeout(() => {
+            _deleteArmed = false;
+            btn.textContent = '×';
+            btn.className = 'w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors text-lg leading-none ml-2';
+          }, 3000);
+        } else {
+          clearTimeout(_deleteTimer);
+          card.style.cssText = 'opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .2s';
+          setTimeout(() => card.remove(), 200);
+        }
+      });
+      footer.querySelector('[data-add-item]').addEventListener('click', () => {
+        const row = createItemRow({ text:'', url:'', photo:'', title:'' });
+        body.appendChild(row);
+        setCollapsed(false);
+        row.querySelector('textarea').focus();
+        row.scrollIntoView({ behavior:'smooth', block:'nearest' });
+      });
+      return card;
+    }
+
+    /* ── Carte album ─────────────────────────────────────────────── */
+    function createAlbumSectionCard(section) {
+      const card = document.createElement('div');
+      card.dataset.sectionId   = section.id;
+      card.dataset.sectionIcon = section.icon || 'camera';
+      card.dataset.sectionType = 'album';
+      card.className = 'bg-white rounded-md border border-gray-200 overflow-hidden';
+      card._albumPhotos = (section.photos || []).map(p => Object.assign({}, p));
+
+      /* ── En-tête ── */
+      const iconKey = section.icon || 'camera';
+      const header = document.createElement('div');
+      header.className = 'px-4 py-3.5 bg-gray-50 border-b border-gray-100 flex items-center gap-3';
+      header.innerHTML = `
+        <button type="button" data-drag-handle title="Déplacer"
+          style="cursor:grab;display:flex;align-items:center;padding:6px 5px;border:none;background:none;border-radius:4px;flex-shrink:0;touch-action:none;-webkit-user-select:none;user-select:none">
+          <svg viewBox="0 0 8 14" width="10" height="14" fill="#d1d5db">
+            <circle cx="2" cy="2" r="1.2"/><circle cx="6" cy="2" r="1.2"/>
+            <circle cx="2" cy="7" r="1.2"/><circle cx="6" cy="7" r="1.2"/>
+            <circle cx="2" cy="12" r="1.2"/><circle cx="6" cy="12" r="1.2"/>
+          </svg>
+        </button>
+        <button type="button" data-icon-btn title="Changer l'icône"
+          class="w-9 h-9 shrink-0 p-1 rounded-md text-gray-700 hover:text-gray-900 hover:bg-white transition-colors cursor-pointer">
+          ${illus(iconKey)}
+        </button>
+        <input data-field="section-title" type="text" value="${esc(section.title)}"
+          class="flex-1 font-semibold text-sm text-gray-700 bg-transparent border-0 focus:outline-none min-h-[36px]" />
+        <span style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:#d1d5db;flex-shrink:0">Album</span>
+        <div class="flex items-center gap-0.5 shrink-0">
+          <button type="button" data-collapse title="Développer / Réduire"
+            style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:none;border:none;cursor:pointer;flex-shrink:0;touch-action:manipulation">
+            <span data-chevron style="display:inline-block;width:8px;height:8px;border-right:2px solid #9ca3af;border-bottom:2px solid #9ca3af;transform:rotate(45deg);transition:transform .2s;margin-top:-4px"></span>
+          </button>
+          <button type="button" data-sec-delete title="Supprimer la section"
+            class="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors text-lg leading-none ml-2">×</button>
+        </div>`;
+      card.appendChild(header);
+
+      /* ── Corps : grille de thumbnails ── */
+      const body = document.createElement('div');
+      body.dataset.body = '1';
+      body.className = 'p-4';
+      const startCollapsed = window.innerWidth < 768;
+      if (startCollapsed) body.style.display = 'none';
+
+      // Grille persistante — jamais reconstruite entièrement
+      const grid = document.createElement('div');
+      grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px';
+
+      const emptyMsg = document.createElement('div');
+      emptyMsg.style.cssText = 'text-align:center;padding:32px 16px;color:#d1d5db;font-size:12px;font-style:italic';
+      emptyMsg.textContent = 'Aucune photo — ajoutez des images ci-dessous';
+
+      function syncEmpty() {
+        if (card._albumPhotos.length === 0) {
+          grid.remove();
+          if (!emptyMsg.parentNode) body.appendChild(emptyMsg);
+        } else {
+          emptyMsg.remove();
+          if (!grid.parentNode) body.appendChild(grid);
+        }
+      }
+
+      // Crée un item thumbnail sans toucher aux autres
+      function createThumbItem(photo) {
+        const item = document.createElement('div');
+        item.style.cssText = 'display:flex;flex-direction:column;gap:5px;transition:opacity .15s,transform .15s';
+
+        const imgWrap = document.createElement('div');
+        imgWrap.style.cssText = 'border-radius:10px;overflow:hidden;position:relative;background:#f3f4f6;aspect-ratio:4/3';
+
+        const img = document.createElement('img');
+        img.src = photo.src;
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s ease';
+        imgWrap.appendChild(img);
+
+        const del = document.createElement('button');
+        del.type = 'button'; del.textContent = '×';
+        del.style.cssText = 'position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;padding:0;line-height:1;z-index:1';
+        imgWrap.addEventListener('mouseenter', () => { del.style.opacity='1'; img.style.transform='scale(1.04)'; });
+        imgWrap.addEventListener('mouseleave', () => { del.style.opacity='0'; img.style.transform=''; });
+
+        del.addEventListener('click', e => {
+          e.stopPropagation();
+          // Supprimer par référence, pas par index — stable quelle que soit la position
+          const i = card._albumPhotos.indexOf(photo);
+          if (i > -1) card._albumPhotos.splice(i, 1);
+          item.style.opacity = '0'; item.style.transform = 'scale(.9)';
+          setTimeout(() => { item.remove(); updateCount(); syncEmpty(); }, 160);
+        });
+        imgWrap.appendChild(del);
+
+        const cap = document.createElement('input');
+        cap.type = 'text'; cap.placeholder = 'Légende…'; cap.value = photo.caption || '';
+        cap.style.cssText = 'width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:5px 8px;font-size:11px;color:#374151;background:#fff;outline:none;font-family:inherit;box-sizing:border-box;transition:border-color .15s';
+        cap.addEventListener('focus', () => { cap.style.borderColor = '#9ca3af'; });
+        cap.addEventListener('blur',  () => { cap.style.borderColor = '#e5e7eb'; });
+        // Lié directement à l'objet photo (pas à idx) → stable après ajout/suppression
+        cap.addEventListener('input', () => { photo.caption = cap.value; });
+
+        // Badge format forcé (visible sur la vignette)
+        const sizeBadge = document.createElement('div');
+        sizeBadge.style.cssText = 'position:absolute;bottom:5px;left:5px;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.07em;background:rgba(0,0,0,.72);color:#fff;display:none;pointer-events:none;z-index:2;font-family:inherit';
+        imgWrap.appendChild(sizeBadge);
+
+        // Sélecteur de format — même grille 3×2 que les blocs classiques
+        // 1x1=auto · 1x2=large · 1x3=solo · 2x1=tall (portrait) · 2x2=large · 2x3=solo
+        const fmtOpts = [
+          { v:'1x1', title:'1 rangée · 1 colonne',     icon:'<span style="display:block;width:12px;height:12px;background:currentColor;border-radius:2px"></span>' },
+          { v:'1x2', title:'1 rangée · 2 colonnes',    icon:'<span style="display:block;width:24px;height:12px;background:currentColor;border-radius:2px"></span>' },
+          { v:'1x3', title:'1 rangée · pleine largeur',icon:'<span style="display:block;width:34px;height:12px;background:currentColor;border-radius:2px"></span>' },
+          { v:'2x1', title:'2 rangées · 1 colonne',    icon:'<span style="display:block;width:12px;height:24px;background:currentColor;border-radius:2px"></span>' },
+          { v:'2x2', title:'2 rangées · 2 colonnes',   icon:'<span style="display:block;width:24px;height:24px;background:currentColor;border-radius:2px"></span>' },
+          { v:'2x3', title:'2 rangées · pleine largeur',icon:'<span style="display:block;width:34px;height:24px;background:currentColor;border-radius:2px"></span>' },
+        ];
+        const sizeRow = document.createElement('div');
+        sizeRow.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:3px;background:#f3f4f6;border-radius:7px;padding:3px';
+        function refreshSize() {
+          const cur = photo.layout || '1x1';
+          sizeRow.querySelectorAll('[data-fv]').forEach(b => {
+            const on = cur === b.dataset.fv;
+            b.style.background = on ? '#1c1917' : 'transparent';
+            b.style.color = on ? '#fff' : '#9ca3af';
+          });
+          sizeBadge.style.display = (cur && cur !== '1x1') ? 'block' : 'none';
+          if (cur && cur !== '1x1') sizeBadge.textContent = cur.toUpperCase();
+        }
+        fmtOpts.forEach(({ v, title, icon }) => {
+          const b = document.createElement('button');
+          b.type = 'button'; b.dataset.fv = v; b.title = title; b.innerHTML = icon;
+          b.style.cssText = 'height:36px;display:flex;align-items:center;justify-content:center;border:none;border-radius:5px;cursor:pointer;transition:background .12s,color .12s';
+          b.addEventListener('click', () => {
+            if (v === '1x1') delete photo.layout; else photo.layout = v;
+            refreshSize();
+          });
+          sizeRow.appendChild(b);
+        });
+        refreshSize();
+
+        item.appendChild(imgWrap);
+        item.appendChild(cap);
+        item.appendChild(sizeRow);
+        return item;
+      }
+
+      // Rendu initial
+      card._albumPhotos.forEach(photo => grid.appendChild(createThumbItem(photo)));
+      syncEmpty();
+      card.appendChild(body);
+
+      /* ── Pied de page : ajouter des photos ── */
+      const footer = document.createElement('div');
+      footer.className = 'px-4 py-3 border-t border-gray-100 bg-gray-50/50 flex items-center gap-4';
+      const countEl = document.createElement('span');
+      countEl.style.cssText = 'font-size:10px;color:#d1d5db;margin-left:auto';
+      function updateCount() {
+        const n = card._albumPhotos.length;
+        countEl.textContent = n + ' photo' + (n !== 1 ? 's' : '');
+      }
+      updateCount();
+
+      const addLabel = document.createElement('label');
+      addLabel.style.cssText = 'cursor:pointer';
+      addLabel.innerHTML = `
+        <span class="text-xs text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-1.5 py-2 min-h-[44px]">
+          <span style="font-size:16px;font-weight:300;line-height:1">+</span> Ajouter des photos
+        </span>`;
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.multiple = true;
+      fileInput.style.display = 'none';
+      fileInput.addEventListener('change', async e => {
+        const files = [...e.target.files]; if (!files.length) return;
+        const addBtn = addLabel.querySelector('span');
+        addBtn.textContent = 'Importation…';
+        for (const file of files) {
+          try {
+            const photo = await resizeImageForAlbum(file);
+            card._albumPhotos.push(photo);
+            grid.appendChild(createThumbItem(photo));
+          } catch {}
+        }
+        addBtn.innerHTML = `<span style="font-size:16px;font-weight:300;line-height:1">+</span> Ajouter des photos`;
+        updateCount(); syncEmpty();
+        e.target.value = '';
+      });
+      addLabel.appendChild(fileInput);
+      footer.appendChild(addLabel);
+      footer.appendChild(countEl);
+      card.appendChild(footer);
+
+      /* ── Collapse ── */
+      const collapseBtn = header.querySelector('[data-collapse]');
+      const chevron = collapseBtn.querySelector('[data-chevron]');
+      function setCollapsed(on) {
+        body.style.display = on ? 'none' : 'block';
+        footer.style.display = on ? 'none' : '';
+        if (chevron) chevron.style.transform = on ? 'rotate(-45deg)' : 'rotate(45deg)';
+      }
+      setCollapsed(startCollapsed);
+      collapseBtn.onclick = function(e) {
+        e.stopPropagation();
+        setCollapsed(body.style.display !== 'none');
+      };
+
+      /* ── Icône ── */
+      header.querySelector('[data-icon-btn]').addEventListener('click', () => {
+        openIconPicker(card.dataset.sectionIcon, key => {
+          card.dataset.sectionIcon = key;
+          header.querySelector('[data-icon-btn]').innerHTML = illus(key);
+        });
+      });
+
+      /* ── Suppression ── */
+      let _deleteArmed = false, _deleteTimer = null;
+      header.querySelector('[data-sec-delete]').addEventListener('click', function() {
+        const btn = this;
+        if (!_deleteArmed) {
+          _deleteArmed = true;
+          btn.textContent = 'Supprimer ?';
+          btn.className = 'text-[10px] font-semibold px-2.5 py-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200 transition-colors ml-2 whitespace-nowrap';
+          _deleteTimer = setTimeout(() => {
+            _deleteArmed = false; btn.textContent = '×';
+            btn.className = 'w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors text-lg leading-none ml-2';
+          }, 3000);
+        } else {
+          clearTimeout(_deleteTimer);
+          card.style.cssText = 'opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .2s';
+          setTimeout(() => card.remove(), 200);
+        }
+      });
+
+      return card;
+    }
+
+    /* ── Drag & Drop (sections + tips) ──────────────────────────── */
+    (function () {
+      let d = null; // { el, parent, ghost, ox, oy }
+
+      document.addEventListener('pointerdown', function (e) {
+        if (!e.target.closest('[data-drag-handle]')) return;
+        const el = e.target.closest('[data-section-id], [data-item-row]');
+        if (!el) return;
+        const parent = el.parentElement;
+        e.preventDefault();
+
+        const r = el.getBoundingClientRect();
+        const ghost = el.cloneNode(true);
+        ghost.style.cssText =
+          'position:fixed;pointer-events:none;z-index:9999' +
+          ';width:' + r.width + 'px;top:' + r.top + 'px;left:' + r.left + 'px' +
+          ';opacity:.92;box-shadow:0 12px 32px rgba(0,0,0,.22);border-radius:8px' +
+          ';transform:rotate(.4deg) scale(1.012);transition:none';
+        document.body.appendChild(ghost);
+        el.style.opacity = '.2';
+        document.body.style.userSelect = 'none';
+        document.body.style.webkitUserSelect = 'none';
+        d = { el, parent, ghost, ox: e.clientX - r.left, oy: e.clientY - r.top };
+      });
+
+      document.addEventListener('pointermove', function (e) {
+        if (!d) return;
+        e.preventDefault();
+        d.ghost.style.top  = (e.clientY - d.oy) + 'px';
+        d.ghost.style.left = (e.clientX - d.ox) + 'px';
+
+        const isSec = d.el.dataset.sectionId !== undefined;
+
+        if (isSec) {
+          /* ── Réordonner les sections ── */
+          const siblings = [...d.parent.querySelectorAll(':scope > [data-section-id]')].filter(s => s !== d.el);
+          let before = null;
+          for (const s of siblings) {
+            const r = s.getBoundingClientRect();
+            if (e.clientY < r.top + r.height * 0.5) { before = s; break; }
+          }
+          before ? d.parent.insertBefore(d.el, before) : d.parent.appendChild(d.el);
+
+        } else {
+          /* ── Réordonner les tips (inter-sections) ── */
+          // Trouver quelle section est sous le pointeur
+          let targetBody = null;
+          for (const card of document.querySelectorAll('[data-section-id]')) {
+            const r = card.getBoundingClientRect();
+            if (e.clientY >= r.top && e.clientY <= r.bottom) {
+              const body = card.querySelector('[data-body="1"]');
+              // N'accepter que les sections ouvertes (ou vides mais visibles)
+              if (body && body.style.display !== 'none') targetBody = body;
+              break;
+            }
+          }
+          if (!targetBody) return;
+
+          // Mettre à jour le parent courant si on change de section
+          if (d.parent !== targetBody) d.parent = targetBody;
+
+          const items = [...targetBody.querySelectorAll(':scope > [data-item-row]')].filter(s => s !== d.el);
+          let before = null;
+          for (const s of items) {
+            const r = s.getBoundingClientRect();
+            if (e.clientY < r.top + r.height * 0.5) { before = s; break; }
+          }
+          before ? targetBody.insertBefore(d.el, before) : targetBody.appendChild(d.el);
+        }
+      }, { passive: false });
+
+      function endDrag() {
+        if (!d) return;
+        d.ghost.remove();
+        d.el.style.opacity = '';
+        document.body.style.userSelect = '';
+        document.body.style.webkitUserSelect = '';
+        d = null;
+      }
+      document.addEventListener('pointerup',     endDrag);
+      document.addEventListener('pointercancel', endDrag);
+    })();
+
+    /* ── Cover image ─────────────────────────────────────────────── */
+    window._coverPos = 'center';
+
+    function setCoverPosActive(pos) {
+      window._coverPos = pos;
+      document.querySelectorAll('[data-cover-pos]').forEach(btn => {
+        const a = btn.dataset.coverPos === pos;
+        btn.style.background = a ? '#1c1917' : '';
+        btn.style.color      = a ? '#fff'    : '';
+        btn.style.fontWeight = a ? '700'     : '';
+      });
+      const img = document.getElementById('cover-preview-img');
+      if (img) img.style.objectPosition = pos;
+    }
+
+    function updateCoverPreview() {
+      const url   = document.getElementById('meta-cover-url').value.trim();
+      const wrap  = document.getElementById('cover-preview-wrap');
+      const img   = document.getElementById('cover-preview-img');
+      const clear = document.getElementById('meta-cover-clear');
+      const posRow = document.getElementById('cover-pos-row');
+      if (url) {
+        img.src = url; img.style.objectPosition = window._coverPos;
+        wrap.classList.remove('hidden'); clear.classList.remove('hidden');
+        posRow.style.display = 'flex';
+      } else {
+        wrap.classList.add('hidden'); clear.classList.add('hidden');
+        posRow.style.display = 'none';
+      }
+    }
+
+    document.querySelectorAll('[data-cover-pos]').forEach(btn =>
+      btn.addEventListener('click', () => setCoverPosActive(btn.dataset.coverPos))
+    );
+    document.getElementById('meta-cover-file').addEventListener('change', async e => {
+      const f = e.target.files[0]; if (!f) return;
+      try { const d = await resizeImage(f); document.getElementById('meta-cover-url').value = d; updateCoverPreview(); } catch {}
+      e.target.value = '';
+    });
+    document.getElementById('meta-cover-clear').addEventListener('click', () => {
+      document.getElementById('meta-cover-url').value = ''; updateCoverPreview();
+    });
+    document.getElementById('meta-cover-unsplash').addEventListener('click', () => {
+      openUnsplashSearch(url => { document.getElementById('meta-cover-url').value = url; updateCoverPreview(); });
+    });
+
+    /* ── Collecte ────────────────────────────────────────────────── */
+    function collectData() {
+      return {
+        meta: {
+          title:               document.getElementById('meta-title').value.trim(),
+          subtitle:            document.getElementById('meta-subtitle').value.trim(),
+          coverImage:          document.getElementById('meta-cover-url').value.trim(),
+          coverObjectPosition: window._coverPos || 'center',
+        },
+        sections: Array.from(document.querySelectorAll('[data-section-id]')).map(card => {
+          const base = {
+            id:    card.dataset.sectionId,
+            icon:  card.dataset.sectionIcon || 'generalites',
+            title: card.querySelector('[data-field="section-title"]').value.trim(),
+          };
+          if (card.dataset.sectionType === 'album') {
+            return { ...base, type: 'album', photos: card._albumPhotos || [] };
+          }
+          return {
+            ...base,
+            items: Array.from(card.querySelectorAll('[data-item-row]:not([data-deleted])'))
+              .map(row => ({
+                title:          row.querySelector('[data-field="title"]').value.trim(),
+                text:           row.querySelector('[data-field="text"]').value.trim(),
+                url:            row.querySelector('[data-field="url"]').value.trim(),
+                photo:          row._photo          || '',
+                layout:         row._layout         || '1x1',
+                textStyle:      row._textStyle      || 'editorial',
+                objectPosition: row._objectPosition || 'center',
+              })).filter(item => item.text),
+          };
+        }),
+      };
+    }
+
+    /* ── Rendu admin ─────────────────────────────────────────────── */
+    function renderAdmin(data) {
+      document.getElementById('meta-title').value     = data.meta.title    || '';
+      document.getElementById('meta-subtitle').value  = data.meta.subtitle || '';
+      document.getElementById('meta-cover-url').value = data.meta.coverImage || '';
+      setCoverPosActive(data.meta.coverObjectPosition || 'center');
+      updateCoverPreview();
+      const container = document.getElementById('sections-container');
+      container.innerHTML = '';
+      (data.sections || []).forEach(s => container.appendChild(
+        s.type === 'album' ? createAlbumSectionCard(s) : createSectionCard(s)
+      ));
+      document.getElementById('main').classList.remove('hidden');
+      setStatus(null);
+    }
+
+    /* ── Login ───────────────────────────────────────────────────── */
+    document.getElementById('login-btn').addEventListener('click', () => {
+      const pwd = document.getElementById('login-pwd').value.trim();
+      const err = document.getElementById('login-error');
+      const cfg = loadConfig();
+      if (!cfg) {
+        // Config perdue (ex. déconnexion précédente) → setup
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('setup-screen').classList.remove('hidden');
+        setTimeout(() => document.getElementById('setup-pwd').focus(), 80);
+        return;
+      }
+      if (cfg.password !== pwd) {
+        err.textContent = 'Mot de passe incorrect.'; err.classList.remove('hidden');
+        document.getElementById('login-pwd').select();
+      } else {
+        err.classList.add('hidden'); setLoggedIn();
+        document.getElementById('login-screen').classList.add('hidden');
+        initAdmin();
+      }
+    });
+
+    document.getElementById('show-import-btn').addEventListener('click', () => {
+      document.getElementById('import-zone').classList.toggle('hidden');
+      if (!document.getElementById('import-zone').classList.contains('hidden'))
+        document.getElementById('import-code').focus();
+    });
+    // Charge un payload d'export {account, sites, active} dans localStorage
+    function importPayload(payload) {
+      if (!payload.account?.password || !payload.account?.token || !payload.sites?.length) throw new Error();
+      saveConfig(payload.account);
+      saveSites(payload.sites);
+      setActiveSiteId(payload.active || payload.sites[0].id);
+    }
+    document.getElementById('import-btn').addEventListener('click', () => {
+      const errEl = document.getElementById('import-error');
+      errEl.classList.add('hidden');
+      try {
+        importPayload(JSON.parse(atob(document.getElementById('import-code').value.trim())));
+        setLoggedIn();
+        document.getElementById('login-screen').classList.add('hidden');
+        initAdmin();
+      } catch {
+        errEl.textContent = 'Code invalide ou corrompu.'; errEl.classList.remove('hidden');
+      }
+    });
+    document.getElementById('login-pwd').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-btn').click(); });
+
+    /* ── Import code sur setup screen ───────────────────────────── */
+    document.getElementById('setup-import-btn').addEventListener('click', () => {
+      const errEl = document.getElementById('setup-import-error');
+      errEl.classList.add('hidden');
+      try {
+        importPayload(JSON.parse(atob(document.getElementById('setup-import-code').value.trim())));
+        setLoggedIn();
+        document.getElementById('setup-screen').classList.add('hidden');
+        initAdmin();
+      } catch {
+        errEl.textContent = 'Code invalide ou corrompu.'; errEl.classList.remove('hidden');
+      }
+    });
+
+    /* ── Setup (compte + première destination) ──────────────────── */
+    document.getElementById('setup-btn').addEventListener('click', async () => {
+      const pwd = document.getElementById('setup-pwd').value.trim();
+      const owner = document.getElementById('setup-owner').value.trim();
+      const repo  = document.getElementById('setup-repo').value.trim();
+      const token = document.getElementById('setup-token').value.trim();
+      const unsplash = document.getElementById('setup-unsplash').value.trim();
+      const errEl = document.getElementById('setup-error');
+      errEl.classList.add('hidden');
+      if (!pwd || !owner || !repo || !token) {
+        errEl.textContent = 'Tous les champs sont requis sauf Unsplash.'; errEl.classList.remove('hidden'); return;
+      }
+      const btn = document.getElementById('setup-btn'); btn.disabled = true; btn.textContent = 'Connexion…';
+      try {
+        await loadFromGitHub({ owner, repo, token });
+        saveConfig({ password: pwd, token, unsplashKey: unsplash });
+        const id = 'site-' + Date.now();
+        saveSites([{ id, label: repo, owner, repo }]);
+        setActiveSiteId(id);
+        setLoggedIn();
+        document.getElementById('setup-screen').classList.add('hidden');
+        initAdmin();
+      } catch(e) {
+        errEl.textContent = 'Erreur : ' + e.message; errEl.classList.remove('hidden');
+      } finally { btn.disabled = false; btn.textContent = 'Configurer et accéder'; }
+    });
+
+    /* ── Paramètres ──────────────────────────────────────────────── */
+    function openSettings() {
+      const cfg = loadConfig() || {};
+      document.getElementById('cfg-token').value    = cfg.token       || '';
+      document.getElementById('cfg-unsplash').value = cfg.unsplashKey || '';
+      document.getElementById('cfg-pwd').value  = '';
+      document.getElementById('cfg-pwd2').value = '';
+      document.getElementById('cfg-error').classList.add('hidden');
+      document.getElementById('settings-modal').classList.remove('hidden');
+    }
+    document.getElementById('settings-btn').addEventListener('click', openSettings);
+    document.getElementById('settings-close').addEventListener('click', () => document.getElementById('settings-modal').classList.add('hidden'));
+    document.getElementById('settings-backdrop').addEventListener('click', () => document.getElementById('settings-modal').classList.add('hidden'));
+    document.getElementById('settings-logout').addEventListener('click', logout);
+    document.getElementById('export-cfg-btn').addEventListener('click', () => {
+      const account = loadConfig(); if (!account) return;
+      const payload = { account, sites: loadSites(), active: getActiveSiteId() };
+      const code = btoa(JSON.stringify(payload));
+      const url  = location.origin + location.pathname + '?code=' + encodeURIComponent(code);
+      const qrZone = document.getElementById('qr-zone');
+      document.getElementById('qr-img').src =
+        'https://api.qrserver.com/v1/create-qr-code/?size=176x176&margin=8&data=' + encodeURIComponent(url);
+      qrZone.classList.remove('hidden');
+      qrZone.classList.add('flex');
+      document.getElementById('export-cfg-btn').textContent = 'Actualiser le QR code';
+      document.getElementById('copy-link-btn')._url = url;
+    });
+    document.getElementById('copy-link-btn').addEventListener('click', function() {
+      navigator.clipboard.writeText(this._url || '')
+        .then(() => showToast('Lien copié', false));
+    });
+    document.getElementById('cfg-save-btn').addEventListener('click', () => {
+      const token = document.getElementById('cfg-token').value.trim();
+      const unsplash = document.getElementById('cfg-unsplash').value.trim();
+      const pwd  = document.getElementById('cfg-pwd').value;
+      const pwd2 = document.getElementById('cfg-pwd2').value;
+      const errEl = document.getElementById('cfg-error');
+      errEl.classList.add('hidden');
+      if (pwd && pwd !== pwd2) { errEl.textContent = 'Les mots de passe ne correspondent pas.'; errEl.classList.remove('hidden'); return; }
+      const cfg = loadConfig() || {};
+      if (token) cfg.token = token;
+      cfg.unsplashKey = unsplash; if (pwd) cfg.password = pwd;
+      saveConfig(cfg);
+      document.getElementById('settings-modal').classList.add('hidden');
+      showToast('Paramètres enregistrés', false);
+    });
+
+    /* ── Unsplash ────────────────────────────────────────────────── */
+    let _unsplashCb = null, _unsplashTimer = null;
+    function openUnsplashSearch(cb) {
+      const cfg = loadConfig();
+      if (!cfg?.unsplashKey) { showToast('Clé Unsplash manquante — ouvrir les paramètres ⚙', true); return; }
+      _unsplashCb = cb;
+      document.getElementById('unsplash-modal').classList.remove('hidden');
+      const input = document.getElementById('unsplash-input');
+      input.value = ''; document.getElementById('unsplash-results').innerHTML = '';
+      setTimeout(() => input.focus(), 80);
+    }
+    function closeUnsplashSearch() { document.getElementById('unsplash-modal').classList.add('hidden'); _unsplashCb = null; }
+    async function runUnsplashSearch(q) {
+      q = q.trim(); if (!q) return;
+      const cfg = loadConfig(); if (!cfg?.unsplashKey) return;
+      const results = document.getElementById('unsplash-results');
+      results.innerHTML = `<div class="col-span-3 flex items-center justify-center py-14 text-sm text-gray-400">
+        <svg class="w-4 h-4 animate-spin mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+        </svg>Recherche…</div>`;
+      try {
+        const resp = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&per_page=18&orientation=landscape`, { headers: { Authorization: `Client-ID ${cfg.unsplashKey}` } });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        if (!data.results?.length) { results.innerHTML = '<div class="col-span-3 text-center py-14 text-sm text-gray-400">Aucun résultat</div>'; return; }
+        results.innerHTML = '';
+        data.results.forEach(photo => {
+          const btn = document.createElement('button'); btn.type = 'button';
+          btn.className = 'relative group rounded-md overflow-hidden bg-gray-100 focus:outline-none';
+          btn.style.aspectRatio = '3/2';
+          btn.innerHTML = `<img src="${photo.urls.small}" alt="" class="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105" loading="lazy" />
+            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span class="text-[9px] text-white/90 block truncate">${esc(photo.user.name)}</span></div>`;
+          btn.addEventListener('click', () => { if (_unsplashCb) _unsplashCb(photo.urls.regular); closeUnsplashSearch(); });
+          results.appendChild(btn);
+        });
+      } catch(e) { results.innerHTML = `<div class="col-span-3 text-center py-14 text-sm text-red-500">Erreur : ${esc(e.message)}</div>`; }
+    }
+    document.getElementById('unsplash-close').addEventListener('click', closeUnsplashSearch);
+    document.getElementById('unsplash-backdrop').addEventListener('click', closeUnsplashSearch);
+    document.getElementById('unsplash-input').addEventListener('input', e => { clearTimeout(_unsplashTimer); _unsplashTimer = setTimeout(() => runUnsplashSearch(e.target.value), 500); });
+    document.getElementById('unsplash-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { clearTimeout(_unsplashTimer); runUnsplashSearch(e.target.value); }
+      if (e.key === 'Escape') closeUnsplashSearch();
+    });
+
+    /* ── Publier ─────────────────────────────────────────────────── */
+    document.getElementById('save-btn').addEventListener('click', async () => {
+      const cfg = effectiveCfg(); if (!cfg) { showToast('Aucune destination sélectionnée', true); return; }
+      setSaveLoading(true);
+      try { await saveToGitHub(cfg, collectData()); showToast('Publié · Le site sera mis à jour dans ~1 min', false); }
+      catch(e) { showToast('Erreur : ' + e.message, true); }
+      finally { setSaveLoading(false); }
+    });
+
+    document.getElementById('preview-btn').addEventListener('click', () => {
+      const site = getActiveSite(); if (!site) return;
+      window.open(`https://${site.owner}.github.io/${site.repo}/`, '_blank', 'noopener');
+    });
+
+    /* ── Nouvelle section ────────────────────────────────────────── */
+    function closeSectionTypePicker() {
+      document.getElementById('section-type-picker').classList.add('hidden');
+    }
+
+    document.getElementById('add-section-btn').addEventListener('click', () => {
+      document.getElementById('section-type-picker').classList.remove('hidden');
+    });
+
+    document.getElementById('section-type-backdrop').addEventListener('click', closeSectionTypePicker);
+
+    document.getElementById('pick-classic').addEventListener('click', () => {
+      closeSectionTypePicker();
+      const id = 'section-' + Date.now();
+      openIconPicker('generalites', key => {
+        const card = createSectionCard({ id, icon: key, title: 'Nouvelle section', items: [] });
+        document.getElementById('sections-container').appendChild(card);
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const ti = card.querySelector('[data-field="section-title"]'); ti.focus(); ti.select();
+      });
+    });
+
+    document.getElementById('pick-album').addEventListener('click', () => {
+      closeSectionTypePicker();
+      const id = 'section-' + Date.now();
+      openIconPicker('camera', key => {
+        const card = createAlbumSectionCard({ id, icon: key, title: 'Album', photos: [] });
+        document.getElementById('sections-container').appendChild(card);
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const ti = card.querySelector('[data-field="section-title"]'); ti.focus(); ti.select();
+      });
+    });
+
+    /* ── Sélecteur de destination ──────────────────────────────────── */
+    function renderSiteSelect() {
+      const sites = loadSites();
+      const activeId = getActiveSiteId();
+      const sel = document.getElementById('site-select');
+      sel.innerHTML = sites.map(s => `<option value="${esc(s.id)}"${s.id===activeId?' selected':''}>${esc(s.label)}</option>`).join('');
+    }
+    document.getElementById('site-select').addEventListener('change', e => {
+      if (!confirm('Changer de destination ? Les modifications non publiées seront perdues.')) {
+        renderSiteSelect(); return;
+      }
+      setActiveSiteId(e.target.value);
+      initAdmin();
+    });
+    document.getElementById('site-add-btn').addEventListener('click', openSitesModal);
+
+    function renderSitesList() {
+      const sites = loadSites();
+      document.getElementById('sites-list').innerHTML = sites.map(s => `
+        <div class="flex items-center justify-between text-xs px-3 py-2 rounded-md bg-gray-50">
+          <span class="text-gray-700 truncate">${esc(s.label)} <span class="text-gray-400">— ${esc(s.owner)}/${esc(s.repo)}</span></span>
+          <button type="button" data-remove-site="${esc(s.id)}" class="text-gray-300 hover:text-red-500 shrink-0 ml-2">✕</button>
+        </div>`).join('') || '<p class="text-xs text-gray-400">Aucune destination enregistrée.</p>';
+      document.querySelectorAll('[data-remove-site]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.removeSite;
+          const remaining = loadSites().filter(s => s.id !== id);
+          saveSites(remaining);
+          if (getActiveSiteId() === id) setActiveSiteId(remaining[0]?.id || '');
+          renderSitesList(); renderSiteSelect();
+          if (remaining.length && getActiveSiteId()) initAdmin();
+        });
+      });
+    }
+    function slugify(s) { return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'destination'; }
+    function openSitesModal() {
+      document.getElementById('site-label').value = '';
+      const active = getActiveSite();
+      document.getElementById('site-owner').value = active?.owner || '';
+      document.getElementById('site-repo').value  = '';
+      document.getElementById('site-error').classList.add('hidden');
+      renderSitesList();
+      document.getElementById('sites-modal').classList.remove('hidden');
+    }
+    document.getElementById('sites-close').addEventListener('click', () => document.getElementById('sites-modal').classList.add('hidden'));
+    document.getElementById('sites-backdrop').addEventListener('click', () => document.getElementById('sites-modal').classList.add('hidden'));
+    document.getElementById('site-label').addEventListener('input', e => {
+      if (!document.getElementById('site-repo')._touched) document.getElementById('site-repo').value = 'guide-' + slugify(e.target.value);
+    });
+    document.getElementById('site-repo').addEventListener('input', () => { document.getElementById('site-repo')._touched = true; });
+
+    function addSiteToList(label, owner, repo) {
+      const id = 'site-' + Date.now();
+      const sites = loadSites(); sites.push({ id, label, owner, repo }); saveSites(sites);
+      setActiveSiteId(id);
+      document.getElementById('sites-modal').classList.add('hidden');
+      renderSiteSelect();
+      initAdmin();
+    }
+    document.getElementById('site-register-btn').addEventListener('click', () => {
+      const label = document.getElementById('site-label').value.trim();
+      const owner = document.getElementById('site-owner').value.trim();
+      const repo  = document.getElementById('site-repo').value.trim();
+      const errEl = document.getElementById('site-error');
+      errEl.classList.add('hidden');
+      if (!label || !owner || !repo) { errEl.textContent = 'Tous les champs sont requis.'; errEl.classList.remove('hidden'); return; }
+      addSiteToList(label, owner, repo);
+    });
+    document.getElementById('site-create-btn').addEventListener('click', async () => {
+      const label = document.getElementById('site-label').value.trim();
+      const owner = document.getElementById('site-owner').value.trim();
+      const repo  = document.getElementById('site-repo').value.trim();
+      const errEl = document.getElementById('site-error');
+      errEl.classList.add('hidden');
+      if (!label || !owner || !repo) { errEl.textContent = 'Tous les champs sont requis.'; errEl.classList.remove('hidden'); return; }
+      const account = loadConfig();
+      if (!account?.token) { errEl.textContent = 'Token GitHub manquant (Paramètres).'; errEl.classList.remove('hidden'); return; }
+      const btn = document.getElementById('site-create-btn'); btn.disabled = true; btn.textContent = 'Création…';
+      try {
+        await generateSiteRepo(account.token, owner, owner, repo);
+        // Laisse GitHub finaliser la génération du dépôt avant d'activer Pages
+        await new Promise(r => setTimeout(r, 2500));
+        await enableGitHubPages(account.token, owner, repo);
+        addSiteToList(label, owner, repo);
+      } catch(e) {
+        errEl.textContent = 'Erreur : ' + e.message + ' — vous pouvez créer le dépôt manuellement sur GitHub (bouton « Use this template » sur guide-site-template) puis « Enregistrer un dépôt existant ».';
+        errEl.classList.remove('hidden');
+      } finally { btn.disabled = false; btn.textContent = 'Créer automatiquement (depuis le template)'; }
+    });
+
+    /* ── Init ────────────────────────────────────────────────────── */
+    async function initAdmin() {
+      const cfg = effectiveCfg();
+      if (!cfg) {
+        // Compte connecté mais aucune destination enregistrée
+        document.getElementById('main').classList.add('hidden');
+        setStatus('error', `<span>Aucune destination enregistrée.</span><button onclick="document.getElementById('site-add-btn').click()" class="ml-auto text-xs underline shrink-0">Ajouter une destination</button>`);
+        return;
+      }
+      renderSiteSelect();
+      const site = getActiveSite();
+      const cached = (() => { try { return JSON.parse(localStorage.getItem(cacheKeyFor(site.id))); } catch {} return null; })();
+      if (cached) renderAdmin(cached);
+      setStatus('loading', `<svg class="w-4 h-4 animate-spin shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Chargement depuis GitHub…`);
+      try {
+        const data = await loadFromGitHub(cfg);
+        try { localStorage.setItem(cacheKeyFor(site.id), JSON.stringify(data)); } catch {}
+        renderAdmin(data);
+      } catch(e) {
+        if (!cached) setStatus('error', `<span>Erreur : ${esc(e.message)}</span><button onclick="location.reload()" class="ml-auto text-xs underline shrink-0">Réessayer</button>`);
+        else { showToast('GitHub inaccessible — données en cache', true); setStatus(null); }
+      }
+    }
+
+    /* ── Boot ────────────────────────────────────────────────────── */
+    (() => {
+      // Accès via QR code : ?code=BASE64
+      const urlCode = new URLSearchParams(location.search).get('code');
+      if (urlCode) {
+        try {
+          importPayload(JSON.parse(atob(urlCode)));
+          setLoggedIn();
+          history.replaceState(null, '', location.pathname);
+        } catch {}
+      }
+
+      const cfg = loadConfig();
+
+      // Compte + session → admin directement
+      if (cfg?.password && isLoggedIn()) {
+        document.getElementById('login-screen').classList.add('hidden');
+        initAdmin();
+        return;
+      }
+
+      // Compte présent mais pas de session → login (juste le mot de passe)
+      if (cfg?.password) {
+        setTimeout(() => document.getElementById('login-pwd').focus(), 80);
+        return;
+      }
+
+      // Aucun compte → setup (avec option import QR dans la page)
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('setup-screen').classList.remove('hidden');
+      setTimeout(() => document.getElementById('setup-pwd').focus(), 80);
+    })();
+  </script>
+</body>
+</html>
