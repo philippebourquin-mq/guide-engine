@@ -23,6 +23,9 @@
        (icône blanche + ombre portée, pas de pastille pleine) — et se révèlent au survol/tap. */
     .admin-mirror { position: relative; }
     .admin-mirror article, .admin-mirror .album-cell { position: relative; cursor: default; }
+    .admin-mirror [contenteditable] {
+      outline: none !important; -webkit-tap-highlight-color: transparent; caret-color: #3b82f6;
+    }
     .admin-mirror [contenteditable]:empty::before {
       content: attr(data-placeholder); color: rgba(120,113,108,.45); pointer-events: none;
     }
@@ -862,6 +865,14 @@
     });
 
     /* ── Section classique — rendu miroir (réutilise GuideEngine) ──── */
+    // U+200B (espace de largeur nulle) : contourne le "title ? ... : ''" de renderItem pour que
+    // l'élément titre soit toujours présent dans le DOM (donc toujours cliquable), même vide.
+    // trim() ne le supprime pas (ce n'est pas un caractère d'espacement Unicode), donc `title` reste truthy.
+    const _TITLE_PLACEHOLDER_CHAR = '​';
+    function withTitlePlaceholder(it) {
+      return it.title?.trim() ? it : { ...it, title: _TITLE_PLACEHOLDER_CHAR };
+    }
+
     function classicMirrorHtml(items) {
       const g = 'var(--sec-gap)';
       const lyAuto = it => { const l = it.layout || '1x1'; return !l || l === '1x1' || l === 'default'; };
@@ -871,14 +882,38 @@
         GuideEngine._albumGroups(items, GuideEngine._CLS_PAT).forEach(({ p, slice }) => {
           const cols = p.grid || '1fr';
           rows.push(`<div style="display:grid;grid-template-columns:${cols};grid-auto-rows:minmax(220px,auto);gap:${g}">${
-            slice.map(it => GuideEngine.renderItem({ ...it, layout: '1x1' })).join('')
+            slice.map(it => GuideEngine.renderItem({ ...withTitlePlaceholder(it), layout: '1x1' })).join('')
           }</div>`);
         });
         return `<div style="display:flex;flex-direction:column;gap:${g}">${rows.join('')}</div>`;
       }
       return `<div style="display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(220px,auto);gap:${g}">${
-        items.map(it => GuideEngine.renderItem(it)).join('')
+        items.map(it => GuideEngine.renderItem(withTitlePlaceholder(it))).join('')
       }</div>`;
+    }
+
+    // Chaque style de texte range titre/texte dans des éléments différents (h3+p pour la
+    // plupart, mais stat=div, rubrique et pullquote=deux <p>). Localise les bons nœuds pour
+    // que l'édition inline écrive dans le bon champ, quel que soit le style choisi.
+    function getTitleTextNodes(el, item) {
+      if (item.photo?.trim()) return { titleEl: el.querySelector('h3'), textEl: el.querySelector('p') };
+      const style = item.textStyle || 'editorial';
+      if (style === 'stat') return { titleEl: el.querySelector('.font-black'), textEl: el.querySelector('p') };
+      const ps = el.querySelectorAll('p');
+      if (style === 'pullquote') return { titleEl: ps[1] || null, textEl: ps[0] || null, dashPrefix: true };
+      if (style === 'rubrique') return { titleEl: ps[0] || null, textEl: ps[1] || null };
+      return { titleEl: el.querySelector('h3'), textEl: el.querySelector('p') };
+    }
+
+    function bindEditableText(el, placeholder, get, set, stripDashPrefix) {
+      el.contentEditable = 'plaintext-only' in document.body ? 'plaintext-only' : 'true';
+      el.dataset.placeholder = placeholder;
+      if (!get().trim()) el.textContent = ''; // efface le témoin U+200B / le "— " orphelin
+      el.addEventListener('input', () => {
+        let v = el.textContent;
+        if (stripDashPrefix) v = v.replace(/^—\s*/, '');
+        set(v.trim());
+      });
     }
 
     function decorateClassicItem(el, item, idx, ctx) {
@@ -887,18 +922,9 @@
       el.dataset.idx = idx;
       if (!item.title && !item.text && !item.photo) el.style.outline = '1.5px dashed #d6d3d1';
 
-      const h3 = el.querySelector('h3');
-      if (h3) {
-        h3.contentEditable = 'plaintext-only' in document.body ? 'plaintext-only' : 'true';
-        h3.dataset.placeholder = 'Titre…';
-        h3.addEventListener('input', () => { item.title = h3.textContent.trim(); });
-      }
-      const p = el.querySelector('p');
-      if (p) {
-        p.contentEditable = 'plaintext-only' in document.body ? 'plaintext-only' : 'true';
-        p.dataset.placeholder = 'Texte…';
-        p.addEventListener('input', () => { item.text = p.textContent.trim(); });
-      }
+      const { titleEl, textEl, dashPrefix } = getTitleTextNodes(el, item);
+      if (titleEl) bindEditableText(titleEl, 'Titre…', () => item.title || '', v => { item.title = v; }, dashPrefix);
+      if (textEl)  bindEditableText(textEl,  'Texte…', () => item.text  || '', v => { item.text  = v; });
 
       const drag = mkBadge('admin-drag-handle', 'Déplacer', DRAG_SVG);
       drag.dataset.dragHandle = '1';
