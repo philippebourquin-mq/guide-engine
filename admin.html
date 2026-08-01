@@ -73,9 +73,13 @@
         class="w-full py-4 bg-stone-900 text-white text-sm font-semibold rounded-md hover:bg-stone-700 active:bg-stone-800 transition-colors">
         Accéder
       </button>
-      <div class="mt-6 text-center">
+      <div class="mt-6 flex items-center justify-center gap-3">
         <button type="button" id="show-import-btn" class="text-xs text-stone-400 hover:text-stone-600 transition-colors underline underline-offset-2">
-          Premier accès sur cet appareil
+          Coller un code d'accès
+        </button>
+        <span class="text-stone-300 text-xs">·</span>
+        <button type="button" id="show-setup-btn" class="text-xs text-stone-400 hover:text-stone-600 transition-colors underline underline-offset-2">
+          Première configuration
         </button>
       </div>
       <div id="import-zone" class="hidden mt-4 border border-stone-200 rounded-lg p-4 bg-white">
@@ -461,6 +465,9 @@
     const SITES_KEY   = 'mtq-gh-sites';    // [{ id, label, owner, repo }, …]
     const ACTIVE_KEY  = 'mtq-gh-active';   // id du site actif
     const TEMPLATE_REPO = 'guide-site-template';
+    const ENGINE_OWNER = 'philippebourquin-mq';
+    const ENGINE_REPO  = 'guide-engine';
+    const ACCOUNT_BLOB_PATH = 'account.enc.json'; // compte chiffré, publié dans guide-engine pour login multi-appareil
     function cacheKeyFor(siteId) { return 'mtq-admin-cache-' + siteId; }
 
     /* ── Illustrations ─────────────────────────────────────────── */
@@ -576,6 +583,72 @@
       window._fileSha = r.content.sha;
       const site = getActiveSite();
       if (site) { try { localStorage.setItem(cacheKeyFor(site.id), JSON.stringify(data)); } catch {} }
+    }
+
+    /* ── Compte chiffré à distance (login multi-appareil au seul mot de passe) ──
+       Le compte (token GitHub inclus) est chiffré avec le mot de passe admin (AES-GCM,
+       clé dérivée par PBKDF2) puis publié en clair-chiffré dans guide-engine (dépôt public,
+       donc lisible sans auth via raw.githubusercontent.com). Un nouvel appareil peut ainsi
+       récupérer tout le compte en ne saisissant que le mot de passe. */
+    function bytesToB64(bytes) { let b = ''; for (const x of bytes) b += String.fromCharCode(x); return btoa(b); }
+    function b64ToBytes(b64) { const bin = atob(b64); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); return bytes; }
+    async function deriveAesKey(password, saltBytes) {
+      const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+      return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: saltBytes, iterations: 300000, hash: 'SHA-256' },
+        keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+      );
+    }
+    async function encryptAccountBlob(password, obj) {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const iv   = crypto.getRandomValues(new Uint8Array(12));
+      const key  = await deriveAesKey(password, salt);
+      const ct   = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(obj)));
+      return { salt: bytesToB64(salt), iv: bytesToB64(iv), ct: bytesToB64(new Uint8Array(ct)) };
+    }
+    async function decryptAccountBlob(password, blob) {
+      const key = await deriveAesKey(password, b64ToBytes(blob.salt));
+      const pt  = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToBytes(blob.iv) }, key, b64ToBytes(blob.ct));
+      return JSON.parse(new TextDecoder().decode(pt));
+    }
+    async function ghContentsFetch(owner, repo, path, token, method, body) {
+      const url  = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+      const opts = { method, headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' } };
+      if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+      const resp = await fetch(url, opts);
+      if (resp.status === 404) return null;
+      if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.message || `HTTP ${resp.status}`); }
+      return resp.json();
+    }
+    // Chiffre {account, sites, active} et publie/actualise account.enc.json dans guide-engine.
+    async function publishAccountBlob() {
+      const acc = loadConfig();
+      if (!acc?.password || !acc?.token) return;
+      const blob = await encryptAccountBlob(acc.password, { account: acc, sites: loadSites(), active: getActiveSiteId() });
+      const body = { message: 'Sync compte admin', content: toBase64(JSON.stringify(blob)) };
+      const existing = await ghContentsFetch(ENGINE_OWNER, ENGINE_REPO, ACCOUNT_BLOB_PATH, acc.token, 'GET');
+      if (existing) body.sha = existing.sha;
+      try {
+        await ghContentsFetch(ENGINE_OWNER, ENGINE_REPO, ACCOUNT_BLOB_PATH, acc.token, 'PUT', body);
+      } catch (e) {
+        if (e.message && e.message.includes('does not match')) {
+          const fresh = await ghContentsFetch(ENGINE_OWNER, ENGINE_REPO, ACCOUNT_BLOB_PATH, acc.token, 'GET');
+          body.sha = fresh.sha;
+          await ghContentsFetch(ENGINE_OWNER, ENGINE_REPO, ACCOUNT_BLOB_PATH, acc.token, 'PUT', body);
+        } else throw e;
+      }
+    }
+    // Tente de récupérer le compte publié à distance à partir du seul mot de passe (nouvel appareil,
+    // ou stockage local perdu). Le succès/échec du déchiffrement AES-GCM sert de vérification du mot de passe.
+    async function recoverAccountByPassword(password) {
+      const resp = await fetch(
+        `https://raw.githubusercontent.com/${ENGINE_OWNER}/${ENGINE_REPO}/main/${ACCOUNT_BLOB_PATH}?t=${Date.now()}`,
+        { cache: 'no-store' }
+      );
+      if (!resp.ok) return { status: 'no-account' };
+      const blob = await resp.json();
+      try { return { status: 'ok', data: await decryptAccountBlob(password, blob) }; }
+      catch { return { status: 'bad-password' }; }
     }
 
     /* ── Créer un dépôt de destination depuis le template ─────────── */
@@ -1463,24 +1536,45 @@
     }
 
     /* ── Login ───────────────────────────────────────────────────── */
-    document.getElementById('login-btn').addEventListener('click', () => {
+    document.getElementById('login-btn').addEventListener('click', async () => {
       const pwd = document.getElementById('login-pwd').value.trim();
       const err = document.getElementById('login-error');
+      const btn = document.getElementById('login-btn');
+      err.classList.add('hidden');
+      if (!pwd) return;
       const cfg = loadConfig();
-      if (!cfg) {
-        // Config perdue (ex. déconnexion précédente) → setup
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('setup-screen').classList.remove('hidden');
-        setTimeout(() => document.getElementById('setup-pwd').focus(), 80);
-        return;
-      }
-      if (cfg.password !== pwd) {
-        err.textContent = 'Mot de passe incorrect.'; err.classList.remove('hidden');
-        document.getElementById('login-pwd').select();
-      } else {
-        err.classList.add('hidden'); setLoggedIn();
+      if (cfg) {
+        if (cfg.password !== pwd) {
+          err.textContent = 'Mot de passe incorrect.'; err.classList.remove('hidden');
+          document.getElementById('login-pwd').select();
+          return;
+        }
+        setLoggedIn();
         document.getElementById('login-screen').classList.add('hidden');
         initAdmin();
+        return;
+      }
+      // Pas de compte sur cet appareil → tenter la récupération à distance avec ce mot de passe
+      btn.disabled = true; btn.textContent = 'Connexion…';
+      try {
+        const result = await recoverAccountByPassword(pwd);
+        if (result.status === 'no-account') {
+          err.textContent = 'Aucun compte configuré pour l\'instant — utilisez « Première configuration » ci-dessous.';
+          err.classList.remove('hidden');
+        } else if (result.status === 'bad-password') {
+          err.textContent = 'Mot de passe incorrect.'; err.classList.remove('hidden');
+        } else {
+          saveConfig(result.data.account);
+          saveSites(result.data.sites || []);
+          setActiveSiteId(result.data.active || (result.data.sites?.[0]?.id) || '');
+          setLoggedIn();
+          document.getElementById('login-screen').classList.add('hidden');
+          initAdmin();
+        }
+      } catch (e) {
+        err.textContent = 'Connexion impossible : ' + e.message; err.classList.remove('hidden');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Accéder';
       }
     });
 
@@ -1488,6 +1582,11 @@
       document.getElementById('import-zone').classList.toggle('hidden');
       if (!document.getElementById('import-zone').classList.contains('hidden'))
         document.getElementById('import-code').focus();
+    });
+    document.getElementById('show-setup-btn').addEventListener('click', () => {
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('setup-screen').classList.remove('hidden');
+      setTimeout(() => document.getElementById('setup-pwd').focus(), 80);
     });
     // Charge un payload d'export {account, sites, active} dans localStorage
     function importPayload(payload) {
@@ -1544,6 +1643,7 @@
         saveSites([{ id, label: repo, owner, repo }]);
         setActiveSiteId(id);
         setLoggedIn();
+        try { await publishAccountBlob(); } catch { showToast('Compte enregistré localement, mais la sync multi-appareil a échoué', true); }
         document.getElementById('setup-screen').classList.add('hidden');
         initAdmin();
       } catch(e) {
@@ -1582,7 +1682,7 @@
       navigator.clipboard.writeText(this._url || '')
         .then(() => showToast('Lien copié', false));
     });
-    document.getElementById('cfg-save-btn').addEventListener('click', () => {
+    document.getElementById('cfg-save-btn').addEventListener('click', async () => {
       const token = document.getElementById('cfg-token').value.trim();
       const unsplash = document.getElementById('cfg-unsplash').value.trim();
       const pwd  = document.getElementById('cfg-pwd').value;
@@ -1596,6 +1696,7 @@
       saveConfig(cfg);
       document.getElementById('settings-modal').classList.add('hidden');
       showToast('Paramètres enregistrés', false);
+      try { await publishAccountBlob(); } catch { showToast('Sync multi-appareil échouée (vérifiez le token)', true); }
     });
 
     /* ── Unsplash ────────────────────────────────────────────────── */
@@ -1759,13 +1860,14 @@
     });
     document.getElementById('site-repo').addEventListener('input', () => { document.getElementById('site-repo')._touched = true; });
 
-    function addSiteToList(label, owner, repo) {
+    async function addSiteToList(label, owner, repo) {
       const id = 'site-' + Date.now();
       const sites = loadSites(); sites.push({ id, label, owner, repo }); saveSites(sites);
       setActiveSiteId(id);
       document.getElementById('sites-modal').classList.add('hidden');
       renderSiteSelect();
       initAdmin();
+      try { await publishAccountBlob(); } catch { showToast('Sync multi-appareil échouée', true); }
     }
     document.getElementById('site-register-btn').addEventListener('click', () => {
       const label = document.getElementById('site-label').value.trim();
@@ -1843,15 +1945,10 @@
         return;
       }
 
-      // Compte présent mais pas de session → login (juste le mot de passe)
-      if (cfg?.password) {
-        setTimeout(() => document.getElementById('login-pwd').focus(), 80);
-        return;
-      }
-
-      // Aucun compte → setup (avec option import QR dans la page)
-      document.getElementById('login-screen').classList.add('hidden');
-      document.getElementById('setup-screen').classList.remove('hidden');
+      // Compte local présent mais pas de session → login (juste le mot de passe)
+      // Aucun compte local → écran de connexion quand même : le mot de passe seul peut
+      // suffire à récupérer un compte déjà configuré ailleurs (voir recoverAccountByPassword).
+      setTimeout(() => document.getElementById('login-pwd').focus(), 80);
       setTimeout(() => document.getElementById('setup-pwd').focus(), 80);
     })();
   </script>
