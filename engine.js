@@ -300,7 +300,17 @@
       let p = pats[pi % pats.length];
       // Adapter si pas assez de photos pour le pattern courant
       if (remAuto < p.n) {
-        if      (remAuto === 1) p = _PAT_SOLO;
+        if (remAuto === 1) {
+          // Éviter de forcer un unique auto isolé en plein format (bien plus grand que les
+          // autres) : le regrouper avec la photo forcée "large" qui suit immédiatement, s'il
+          // y en a une — plutôt qu'un rendu solo disproportionné.
+          const after = photos[autoEnd];
+          if (after && _albSz(after) === 'large') {
+            groups.push({ p:{ n:2, grid:'3fr 5fr', h:'var(--alb-h2)', rows:1 }, slice:[photo, after] });
+            i = autoEnd + 1; pi++; continue;
+          }
+          p = _PAT_SOLO;
+        }
         else if (remAuto === 2) p = _PAT_DUO;
         else if (remAuto === 3) p = _PAT_TRIO;
       }
