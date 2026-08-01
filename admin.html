@@ -27,20 +27,20 @@
     .admin-mirror [contenteditable]:empty::before {
       content: attr(data-placeholder); color: rgba(120,113,108,.45); pointer-events: none;
     }
-    /* Pastille sombre translucide constante : lisible quel que soit ce qu'il y a dessous
-       (carte claire, photo claire ou sombre) — pas besoin de deviner le contraste. */
+    /* Icône seule + ombre douce (comme .album-star sur le site) — pas de pastille pleine.
+       Gris clair (visible sur fond blanc) + ombre portée (donne un contour sombre sur photo). */
     .admin-handle {
       display: flex; align-items: center; justify-content: center;
-      position: absolute; z-index: 3; border: none; padding: 0; margin: 0;
-      cursor: pointer; transition: opacity .15s, background-color .15s;
-      color: #fff; opacity: .5; background: rgba(28,25,23,.45); backdrop-filter: blur(3px);
-      border-radius: 50%;
+      position: absolute; z-index: 3; border: none; background: none; padding: 0; margin: 0;
+      cursor: pointer; transition: opacity .15s, color .15s;
+      color: #a8a29e; opacity: .85;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)) drop-shadow(0 0 4px rgba(0,0,0,.25));
     }
     .admin-mirror article:hover .admin-handle, .admin-mirror .album-cell:hover .admin-handle,
     .admin-handle:hover, .admin-handle:focus-visible { opacity: 1; }
     .admin-drag-handle    { top: 7px; left: 7px; width: 26px; height: 26px; cursor: grab; touch-action: none; }
-    .admin-delete-badge   { top: 7px; right: 7px; width: 24px; height: 24px; font-size: 17px; font-weight: 300; line-height: 1; }
-    .admin-delete-badge:hover { background-color: #ef4444; }
+    .admin-delete-badge   { top: 7px; right: 7px; width: 24px; height: 24px; font-size: 19px; font-weight: 300; line-height: 1; }
+    .admin-delete-badge:hover { color: #ef4444; }
     .admin-photo-badge    { bottom: 7px; left: 7px; width: 26px; height: 26px; }
     .admin-options-badge  { bottom: 7px; left: 7px; width: 26px; height: 26px; }
     .admin-resize-handle  { bottom: 7px; right: 7px; width: 24px; height: 24px; cursor: nwse-resize; touch-action: none; }
@@ -930,6 +930,9 @@
       // Focus de la photo : clic direct sur l'image plutôt qu'un réglage séparé
       const img = el.querySelector('img');
       if (img) {
+        // Le calque de dégradé (absolute inset-0, juste après l'image dans le DOM) intercepte
+        // sinon les clics avant qu'ils n'atteignent l'image — le laisser passer.
+        if (img.nextElementSibling) img.nextElementSibling.style.pointerEvents = 'none';
         img.style.cursor = 'crosshair';
         img.title = 'Cliquer pour recentrer la photo';
         img.addEventListener('click', e => {
