@@ -2,6 +2,12 @@
 
 Moteur de rendu + admin **unique**, partagés par toutes les destinations du système "Guide de voyage". Une modification poussée ici (`git push`) se propage automatiquement à tous les sites qui chargent `engine.js`/`engine.css` — pas de copie manuelle.
 
+### Cache-busting — important après chaque modification de `engine.js`/`engine.css`
+
+GitHub Pages sert ces fichiers avec `cache-control: max-age=600` (10 min) — un simple rechargement de page dans les 10 minutes suivant un `git push` peut donc encore servir l'ancienne version depuis le cache du navigateur, et faire croire qu'un correctif ne fonctionne pas.
+
+Les URLs qui chargent `engine.js`/`engine.css` (dans chaque `index.html` de destination, dans `guide-site-template/index.html`, et dans `admin.html`) portent un paramètre `?v=AAAAMMJJ`. **Après toute modification de `engine.js` ou `engine.css`, mettre à jour ce paramètre partout** (nouvelle date, ou incrémenter un suffixe si plusieurs mises à jour le même jour) pour forcer un rechargement immédiat chez tous les visiteurs/admin, au lieu d'attendre l'expiration du cache.
+
 ## Architecture globale
 
 ```
