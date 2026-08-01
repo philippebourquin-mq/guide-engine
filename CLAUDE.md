@@ -75,6 +75,10 @@ Fallbacks indépendants du tableau (résistants aux réordres) :
 
 Si prendre `n` photos laisserait exactement 1 orphelin : ajuster `n` (élargir si ≤3, rétrécir sinon).
 
+### Auto isolé avant un bloc forcé
+
+Une photo auto seule dans son run (`remAuto === 1`) juste avant un bloc `'large'` (1x2/2x2) est regroupée avec lui en duo `3fr 5fr` plutôt que forcée en solo pleine largeur. Sans photo `'large'` suivante (fin de section, ou suivante `'tall'`/`'solo'`), le solo reste inévitable — c'est la seule option sensée. Sans cette règle, une telle photo n'a aucun format plus petit vers lequel la redimensionner depuis l'admin (`auto`/`1x1` est déjà le plancher).
+
 ## Sections
 
 ### Types
