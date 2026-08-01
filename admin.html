@@ -12,9 +12,57 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="engine.css" />
   <style>
     body { font-family: 'Poppins', system-ui, sans-serif; }
     textarea { field-sizing: content; }
+
+    /* ── Éditeur miroir ──────────────────────────────────────────── */
+    .admin-mirror { position: relative; }
+    .admin-mirror article, .admin-mirror .album-cell { position: relative; }
+    .admin-mirror [contenteditable]:focus { outline: 2px solid #3b82f6; outline-offset: 2px; border-radius: 4px; }
+    .admin-mirror [contenteditable]:empty::before {
+      content: attr(data-placeholder); color: rgba(120,113,108,.45); pointer-events: none;
+    }
+    .admin-handle, .admin-delete-badge, .admin-resize-handle, .admin-add-tile, .admin-photo-badge, .admin-options-badge { display: none; }
+    .admin-edit-on .admin-handle, .admin-edit-on .admin-delete-badge, .admin-edit-on .admin-photo-badge, .admin-edit-on .admin-options-badge,
+    .admin-edit-on .admin-resize-handle, .admin-edit-on .admin-add-tile { display: flex; }
+    .admin-edit-on .admin-mirror article, .admin-edit-on .admin-mirror .album-cell { cursor: default; }
+    .admin-drag-handle {
+      position: absolute; top: 6px; left: 6px; z-index: 3; width: 30px; height: 30px; border-radius: 8px;
+      background: rgba(0,0,0,.55); align-items: center; justify-content: center; cursor: grab; touch-action: none;
+    }
+    .admin-delete-badge {
+      position: absolute; top: 6px; right: 6px; z-index: 3; width: 24px; height: 24px; border-radius: 50%;
+      background: #ef4444; color: #fff; align-items: center; justify-content: center; cursor: pointer;
+      font-size: 15px; line-height: 1; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3);
+    }
+    .admin-resize-handle {
+      position: absolute; bottom: 4px; right: 4px; z-index: 3; width: 22px; height: 22px; border-radius: 6px;
+      background: rgba(0,0,0,.55); align-items: center; justify-content: center; cursor: nwse-resize; touch-action: none;
+    }
+    .admin-photo-badge {
+      position: absolute; bottom: 6px; left: 6px; z-index: 3; width: 30px; height: 30px; border-radius: 8px;
+      background: rgba(0,0,0,.55); align-items: center; justify-content: center; cursor: pointer;
+    }
+    .admin-photo-badge.admin-photo-badge-empty {
+      position: static; width: 100%; height: 100%; min-height: 90px; border-radius: 10px;
+      background: #f3f4f6; color: #9ca3af; border: 1.5px dashed #d1d5db;
+    }
+    .admin-options-badge {
+      position: absolute; top: 6px; left: 50%; transform: translateX(-50%); z-index: 3; width: 26px; height: 26px;
+      border-radius: 8px; background: rgba(0,0,0,.55); align-items: center; justify-content: center; cursor: pointer;
+    }
+    .admin-add-tile {
+      align-items: center; justify-content: center; border: 2px dashed #d1d5db; border-radius: 12px;
+      color: #9ca3af; cursor: pointer; min-height: 120px; background: #fafaf9; transition: background .15s, border-color .15s;
+    }
+    .admin-add-tile:hover { background: #f3f4f6; border-color: #9ca3af; color: #6b7280; }
+    .admin-resize-ghost {
+      position: fixed; z-index: 9999; pointer-events: none; border: 2px dashed #3b82f6;
+      background: rgba(59,130,246,.08); border-radius: 10px;
+    }
+    .admin-drop-target { outline: 2px solid #3b82f6; outline-offset: 2px; border-radius: 10px; }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen antialiased text-gray-900">
@@ -219,6 +267,75 @@
     </div>
   </div>
 
+  <!-- ── Options d'un tip (lien, style de texte, focus photo) ─────── -->
+  <div id="item-options-modal" class="hidden fixed inset-0 z-50 flex items-end md:items-center justify-center">
+    <div id="item-options-backdrop" class="absolute inset-0 bg-black/40"></div>
+    <div class="relative bg-white rounded-t-xl md:rounded-lg w-full md:max-w-sm p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+      <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400">Options du bloc</p>
+      <div>
+        <label class="text-[10px] text-gray-400 block mb-1.5">Photo</label>
+        <div class="flex items-center gap-2 flex-wrap">
+          <label class="cursor-pointer shrink-0">
+            <span class="text-xs text-gray-500 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-md px-2.5 py-2 inline-flex items-center transition-colors whitespace-nowrap min-h-[36px]">Changer</span>
+            <input type="file" accept="image/*" class="hidden" id="item-opt-photo-input" />
+          </label>
+          <button type="button" id="item-opt-unsplash-btn"
+            class="text-xs text-gray-400 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-md px-2 py-2 inline-flex items-center gap-1 transition-colors whitespace-nowrap min-h-[36px] shrink-0">
+            <svg class="w-3 h-3" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="6"/><path d="m15 15 3 3" stroke-linecap="round"/></svg>
+            Unsplash
+          </button>
+          <button type="button" id="item-opt-remove-photo" class="text-xs text-gray-400 hover:text-red-500 transition-colors py-2 px-1 min-h-[36px] whitespace-nowrap">Retirer</button>
+        </div>
+      </div>
+      <div>
+        <label class="text-[10px] text-gray-400 block mb-1.5">Lien</label>
+        <input id="item-opt-url" type="url" inputmode="url" placeholder="https://… ou tel:+596…"
+          class="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm text-gray-700 bg-white focus:outline-none focus:border-gray-400 transition-colors" />
+      </div>
+      <div id="item-opt-textstyle-wrap">
+        <label class="text-[10px] text-gray-400 block mb-1.5">Style de texte</label>
+        <div class="flex flex-col gap-1.5">
+          <div class="flex items-center gap-1.5">
+            <span style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#d1d5db;width:24px;flex-shrink:0">Plat</span>
+            <div class="flex gap-1 flex-wrap">
+              <button type="button" data-text-style-opt="editorial" style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Édito</button>
+              <button type="button" data-text-style-opt="pullquote" style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Citation</button>
+              <button type="button" data-text-style-opt="stat"      style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Stat</button>
+              <button type="button" data-text-style-opt="rubrique"  style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Rubrique</button>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#d1d5db;width:24px;flex-shrink:0">Fond</span>
+            <div class="flex gap-1 flex-wrap">
+              <button type="button" data-text-style-opt="card"    style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Carte</button>
+              <button type="button" data-text-style-opt="sombre"  style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Sombre</button>
+              <button type="button" data-text-style-opt="note"    style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Note</button>
+              <button type="button" data-text-style-opt="encadre" style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Encadré</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="item-opt-position-wrap" class="hidden">
+        <label class="text-[10px] text-gray-400 block mb-1.5">Focus de la photo</label>
+        <div class="grid grid-cols-3 gap-px rounded-md overflow-hidden bg-gray-200" style="width:66px;height:50px">
+          <button type="button" data-pos-opt="top left"      class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↖</button>
+          <button type="button" data-pos-opt="top center"    class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↑</button>
+          <button type="button" data-pos-opt="top right"     class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↗</button>
+          <button type="button" data-pos-opt="center left"   class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">←</button>
+          <button type="button" data-pos-opt="center"        class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">·</button>
+          <button type="button" data-pos-opt="center right"  class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">→</button>
+          <button type="button" data-pos-opt="bottom left"   class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↙</button>
+          <button type="button" data-pos-opt="bottom center" class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↓</button>
+          <button type="button" data-pos-opt="bottom right"  class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↘</button>
+        </div>
+      </div>
+      <button id="item-opt-close" type="button"
+        class="w-full py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-md hover:bg-gray-700 transition-colors">
+        Fermer
+      </button>
+    </div>
+  </div>
+
   <!-- ── Sélecteur type de section ──────────────────────────────── -->
   <div id="section-type-picker" class="hidden fixed inset-0 z-50 flex items-end md:items-center justify-center">
     <div id="section-type-backdrop" class="absolute inset-0 bg-black/40"></div>
@@ -279,6 +396,10 @@
       <button id="preview-btn"
         class="text-xs text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-md px-3 py-2 transition-colors whitespace-nowrap hidden md:block">
         Voir le site ↗
+      </button>
+      <button id="edit-mode-btn" type="button"
+        class="text-xs font-semibold border border-gray-200 hover:border-gray-400 text-gray-600 rounded-md px-4 py-2 transition-colors whitespace-nowrap min-h-[36px]">
+        Modifier
       </button>
       <button id="save-btn"
         class="text-xs font-semibold bg-gray-900 text-white hover:bg-gray-700 active:bg-gray-800 rounded-md px-4 py-2 transition-colors whitespace-nowrap min-h-[36px]">
@@ -368,7 +489,7 @@
     </div>
 
     <!-- Sections -->
-    <div id="sections-container" class="space-y-4"></div>
+    <div id="sections-container" class="admin-mirror space-y-4"></div>
 
     <!-- Nouvelle section -->
     <button id="add-section-btn"
@@ -400,6 +521,7 @@
     </div>
   </div>
 
+  <script src="engine.js"></script>
   <script>
     const ACCOUNT_KEY = 'mtq-gh-account';  // { password, token, unsplashKey }
     const SITES_KEY   = 'mtq-gh-sites';    // [{ id, label, owner, repo }, …]
@@ -601,8 +723,6 @@
       });
     }
 
-    function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.max(52, el.scrollHeight) + 'px'; }
-
     function resizeImageForAlbum(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader(); reader.onerror = reject;
@@ -647,218 +767,288 @@
     });
 
     /* ── Photo UI ────────────────────────────────────────────────── */
-    function updatePhotoUI(row, photoData) {
-      const preview  = row.querySelector('[data-photo-preview]');
-      const img      = row.querySelector('[data-photo-img]');
-      const label    = row.querySelector('[data-photo-label]');
-      const removeBtn = row.querySelector('[data-remove-photo]');
-      const posRow      = row.querySelector('[data-position-row]');
-      const textStyleRow = row.querySelector('[data-text-style-row]');
-      if (photoData) {
-        preview.classList.remove('hidden'); img.src = photoData; label.textContent = 'Changer';
-        removeBtn.classList.remove('hidden');
-        posRow?.classList.remove('hidden');
-        textStyleRow?.classList.add('hidden');
-      } else {
-        preview.classList.add('hidden'); img.src = ''; label.textContent = '+ Photo';
-        removeBtn.classList.add('hidden');
-        posRow?.classList.add('hidden');
-        textStyleRow?.classList.remove('hidden');
-        row._objectPosition = 'center'; setPosActive(row, 'center');
+    /* ══ Éditeur miroir — état + helpers partagés ═══════════════════ */
+    let _adminEditMode = false;
+
+    function parseLayout(raw) {
+      const key = raw === 'default' ? '1x1' : raw === 'wide' ? '1x2' : raw || '1x1';
+      const m = key.match(/^(\d)x(\d)$/);
+      return { rows: m ? +m[1] : 1, cols: m ? +m[2] : 1 };
+    }
+    function layoutFromRowsCols(rows, cols) { return (rows === 1 && cols === 1) ? '' : (rows + 'x' + cols); }
+
+    const DRAG_SVG   = `<svg viewBox="0 0 8 14" width="12" height="16" fill="#fff"><circle cx="2" cy="2" r="1.3"/><circle cx="6" cy="2" r="1.3"/><circle cx="2" cy="7" r="1.3"/><circle cx="6" cy="7" r="1.3"/><circle cx="2" cy="12" r="1.3"/><circle cx="6" cy="12" r="1.3"/></svg>`;
+    const RESIZE_SVG = `<svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><path d="M2 10 L10 2 M6 10 L10 6"/></svg>`;
+    const PHOTO_SVG  = `<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="12" rx="2"/><circle cx="10" cy="11" r="3"/><path d="M7 5l1.2-2h3.6L13 5"/></svg>`;
+    const OPT_SVG    = `<svg viewBox="0 0 20 20" width="14" height="14" fill="#fff"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg>`;
+
+    function mkBadge(cls, title, html) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'admin-handle ' + cls; b.title = title; b.innerHTML = html;
+      return b;
+    }
+
+    // Sélection d'un fichier photo, sans dépendre d'un <input> présent dans le DOM au préalable
+    function pickPhotoFile(cb) {
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*';
+      inp.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
+      document.body.appendChild(inp);
+      inp.addEventListener('change', async () => {
+        const f = inp.files[0]; inp.remove();
+        if (!f) return;
+        try { cb(await resizeImage(f)); } catch {}
+      });
+      inp.click();
+    }
+    function pickAlbumFiles(cb) {
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+      inp.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
+      document.body.appendChild(inp);
+      inp.addEventListener('change', () => {
+        const files = [...inp.files]; inp.remove();
+        if (files.length) cb(files);
+      });
+      inp.click();
+    }
+
+    // Poignée de redimensionnement générique : mappe un drag en pixels vers un format NxM,
+    // en utilisant la taille actuellement rendue du bloc comme unité de référence.
+    function attachResize(handle, getEl, getRowsCols, onCommit) {
+      handle.addEventListener('pointerdown', e => {
+        e.preventDefault(); e.stopPropagation();
+        const el = getEl();
+        const r = el.getBoundingClientRect();
+        const { rows: startRows, cols: startCols } = getRowsCols();
+        const colUnit = r.width / startCols, rowUnit = r.height / startRows;
+        const ghost = document.createElement('div');
+        ghost.className = 'admin-resize-ghost';
+        ghost.style.cssText += `top:${r.top}px;left:${r.left}px;width:${r.width}px;height:${r.height}px`;
+        document.body.appendChild(ghost);
+        const startX = e.clientX, startY = e.clientY;
+        let cols = startCols, rows = startRows;
+        function move(ev) {
+          const dx = ev.clientX - startX, dy = ev.clientY - startY;
+          cols = Math.min(3, Math.max(1, Math.round(startCols + dx / colUnit)));
+          rows = Math.min(2, Math.max(1, Math.round(startRows + dy / rowUnit)));
+          ghost.style.width  = (colUnit * cols) + 'px';
+          ghost.style.height = (rowUnit * rows) + 'px';
+        }
+        function up() {
+          document.removeEventListener('pointermove', move);
+          document.removeEventListener('pointerup', up);
+          ghost.remove();
+          if (cols !== startCols || rows !== startRows) onCommit(rows, cols);
+        }
+        document.addEventListener('pointermove', move);
+        document.addEventListener('pointerup', up);
+      });
+    }
+
+    function toggleEditMode(on) {
+      _adminEditMode = on;
+      document.getElementById('sections-container').classList.toggle('admin-edit-on', on);
+      const btn = document.getElementById('edit-mode-btn');
+      btn.textContent = on ? 'Terminé' : 'Modifier';
+      btn.className = on
+        ? 'text-xs font-semibold bg-gray-900 text-white rounded-md px-4 py-2 transition-colors whitespace-nowrap min-h-[36px]'
+        : 'text-xs font-semibold border border-gray-200 hover:border-gray-400 text-gray-600 rounded-md px-4 py-2 transition-colors whitespace-nowrap min-h-[36px]';
+    }
+    document.getElementById('edit-mode-btn').addEventListener('click', () => toggleEditMode(!_adminEditMode));
+
+    /* ── Modale options d'un tip (lien / style / focus / photo) ────── */
+    let _itemOpt = null; // { item, onChange }
+    function refreshItemOptTextStyle(style) {
+      document.querySelectorAll('#item-options-modal [data-text-style-opt]').forEach(btn => {
+        const on = btn.dataset.textStyleOpt === style;
+        btn.style.background = on ? '#111827' : '#f3f4f6'; btn.style.color = on ? '#fff' : '#6b7280';
+      });
+    }
+    function refreshItemOptPos(pos) {
+      document.querySelectorAll('#item-options-modal [data-pos-opt]').forEach(btn => {
+        const on = btn.dataset.posOpt === pos;
+        btn.style.background = on ? '#1c1917' : ''; btn.style.color = on ? '#fff' : ''; btn.style.fontWeight = on ? '700' : '';
+      });
+    }
+    function openItemOptions(item, onChange) {
+      _itemOpt = { item, onChange };
+      document.getElementById('item-opt-url').value = item.url || '';
+      const hasPhoto = !!item.photo?.trim();
+      document.getElementById('item-opt-textstyle-wrap').classList.toggle('hidden', hasPhoto);
+      document.getElementById('item-opt-position-wrap').classList.toggle('hidden', !hasPhoto);
+      refreshItemOptTextStyle(item.textStyle || 'editorial');
+      refreshItemOptPos(item.objectPosition || 'center');
+      document.getElementById('item-options-modal').classList.remove('hidden');
+    }
+    function closeItemOptions() { document.getElementById('item-options-modal').classList.add('hidden'); _itemOpt = null; }
+    document.getElementById('item-opt-close').addEventListener('click', closeItemOptions);
+    document.getElementById('item-options-backdrop').addEventListener('click', closeItemOptions);
+    document.getElementById('item-opt-url').addEventListener('input', e => { if (_itemOpt) _itemOpt.item.url = e.target.value; });
+    document.querySelectorAll('#item-options-modal [data-text-style-opt]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!_itemOpt) return;
+        _itemOpt.item.textStyle = btn.dataset.textStyleOpt;
+        refreshItemOptTextStyle(btn.dataset.textStyleOpt);
+        _itemOpt.onChange('textStyle');
+      });
+    });
+    document.querySelectorAll('#item-options-modal [data-pos-opt]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!_itemOpt) return;
+        _itemOpt.item.objectPosition = btn.dataset.posOpt;
+        refreshItemOptPos(btn.dataset.posOpt);
+        _itemOpt.onChange('pos');
+      });
+    });
+    document.getElementById('item-opt-photo-input').addEventListener('change', async e => {
+      const f = e.target.files[0]; e.target.value = '';
+      if (!f || !_itemOpt) return;
+      try { _itemOpt.item.photo = await resizeImage(f); _itemOpt.onChange('photo'); closeItemOptions(); } catch {}
+    });
+    document.getElementById('item-opt-unsplash-btn').addEventListener('click', () => {
+      if (!_itemOpt) return;
+      const it = _itemOpt.item, onChange = _itemOpt.onChange;
+      openUnsplashSearch(url => { it.photo = url; onChange('photo'); closeItemOptions(); });
+    });
+    document.getElementById('item-opt-remove-photo').addEventListener('click', () => {
+      if (!_itemOpt) return;
+      _itemOpt.item.photo = ''; _itemOpt.onChange('photo'); closeItemOptions();
+    });
+
+    /* ── Section classique — rendu miroir (réutilise GuideEngine) ──── */
+    function classicMirrorHtml(items) {
+      const g = 'var(--sec-gap)';
+      const lyAuto = it => { const l = it.layout || '1x1'; return !l || l === '1x1' || l === 'default'; };
+      const allAuto = items.length > 0 && items.every(lyAuto);
+      if (allAuto) {
+        const rows = [];
+        GuideEngine._albumGroups(items, GuideEngine._CLS_PAT).forEach(({ p, slice }) => {
+          const cols = p.grid || '1fr';
+          rows.push(`<div style="display:grid;grid-template-columns:${cols};grid-auto-rows:minmax(220px,auto);gap:${g}">${
+            slice.map(it => GuideEngine.renderItem({ ...it, layout: '1x1' })).join('')
+          }</div>`);
+        });
+        return `<div style="display:flex;flex-direction:column;gap:${g}">${rows.join('')}</div>`;
       }
+      return `<div style="display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(220px,auto);gap:${g}">${
+        items.map(it => GuideEngine.renderItem(it)).join('')
+      }</div>`;
     }
 
-    function setLayoutActive(row, layout) {
-      const norm = layout === 'default' ? '1x1' : layout === 'wide' ? '2x1' : layout || '1x1';
-      row.querySelectorAll('[data-layout-opt]').forEach(btn => {
-        const active = btn.dataset.layoutOpt === norm;
-        btn.style.background = active ? '#111827' : '#f9fafb';
-        btn.style.color      = active ? '#ffffff' : '#9ca3af';
+    function decorateClassicItem(el, item, idx, ctx) {
+      el.removeAttribute('onclick');
+      el.dataset.mirrorItem = '1';
+      el.dataset.idx = idx;
+      if (!item.title && !item.text && !item.photo) el.style.outline = '1.5px dashed #d6d3d1';
+
+      const h3 = el.querySelector('h3');
+      if (h3) {
+        h3.contentEditable = 'plaintext-only' in document.body ? 'plaintext-only' : 'true';
+        h3.dataset.placeholder = 'Titre…';
+        h3.addEventListener('input', () => { item.title = h3.textContent.trim(); });
+      }
+      const p = el.querySelector('p');
+      if (p) {
+        p.contentEditable = 'plaintext-only' in document.body ? 'plaintext-only' : 'true';
+        p.dataset.placeholder = 'Texte…';
+        p.addEventListener('input', () => { item.text = p.textContent.trim(); });
+      }
+
+      const drag = mkBadge('admin-drag-handle', 'Déplacer', DRAG_SVG);
+      drag.dataset.dragHandle = '1';
+      el.appendChild(drag);
+
+      const del = mkBadge('admin-delete-badge', 'Supprimer', '×');
+      del.addEventListener('click', e => { e.stopPropagation(); ctx.onDelete(item); });
+      el.appendChild(del);
+
+      const photoBtn = mkBadge('admin-photo-badge', item.photo ? 'Changer la photo' : 'Ajouter une photo', PHOTO_SVG);
+      photoBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        pickPhotoFile(dataUrl => { item.photo = dataUrl; ctx.rerender(); });
+      });
+      el.appendChild(photoBtn);
+
+      const opt = mkBadge('admin-options-badge', 'Options', OPT_SVG);
+      opt.addEventListener('click', e => {
+        e.stopPropagation();
+        openItemOptions(item, kind => {
+          if (kind === 'textStyle' || kind === 'photo') ctx.rerender();
+          else if (kind === 'pos') { const img = el.querySelector('img'); if (img) img.style.objectPosition = item.objectPosition; }
+        });
+      });
+      el.appendChild(opt);
+
+      const resize = mkBadge('admin-resize-handle', 'Redimensionner', RESIZE_SVG);
+      el.appendChild(resize);
+      attachResize(resize, () => el, () => parseLayout(item.layout), (rows, cols) => {
+        const l = layoutFromRowsCols(rows, cols);
+        if (l) item.layout = l; else delete item.layout;
+        ctx.rerender();
       });
     }
 
-    function setTextStyleActive(row, style) {
-      const norm = style || 'card';
-      row.querySelectorAll('[data-text-style-opt]').forEach(btn => {
-        const active = btn.dataset.textStyleOpt === norm;
-        btn.style.background = active ? '#111827' : '#f3f4f6';
-        btn.style.color      = active ? '#ffffff' : '#6b7280';
+    /* ── Section album — rendu miroir (réutilise GuideEngine) ──────── */
+    function decorateAlbumCell(el, photo, idx, ctx) {
+      el.removeAttribute('onclick');
+      el.querySelector('.album-star')?.remove();
+      el.dataset.mirrorItem = '1';
+      el.dataset.idx = idx;
+
+      const cap = document.createElement('div');
+      cap.contentEditable = 'plaintext-only' in document.body ? 'plaintext-only' : 'true';
+      cap.dataset.placeholder = 'Légende…';
+      cap.textContent = photo.caption || '';
+      cap.style.cssText = 'position:absolute;left:0;right:0;bottom:0;z-index:2;padding:5px 8px;font-size:10px;color:#fff;background:linear-gradient(to top,rgba(0,0,0,.65),transparent);outline:none';
+      cap.addEventListener('input', () => { photo.caption = cap.textContent.trim(); });
+      cap.addEventListener('click', e => e.stopPropagation());
+      el.appendChild(cap);
+
+      const drag = mkBadge('admin-drag-handle', 'Déplacer', DRAG_SVG);
+      drag.dataset.dragHandle = '1';
+      el.appendChild(drag);
+
+      const del = mkBadge('admin-delete-badge', 'Supprimer', '×');
+      del.addEventListener('click', e => { e.stopPropagation(); ctx.onDelete(photo); });
+      el.appendChild(del);
+
+      // Remplacement de l'image : variante dédiée album (conserve caption/layout, contrairement à pickPhotoFile)
+      const photoBtn = mkBadge('admin-photo-badge', 'Changer la photo', PHOTO_SVG);
+      photoBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const inp = document.createElement('input');
+        inp.type = 'file'; inp.accept = 'image/*';
+        inp.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
+        document.body.appendChild(inp);
+        inp.addEventListener('change', async () => {
+          const f = inp.files[0]; inp.remove(); if (!f) return;
+          try {
+            const r = await resizeImageForAlbum(f);
+            photo.src = r.src; photo.aspect = r.aspect;
+            ctx.rerender();
+          } catch {}
+        });
+        inp.click();
+      });
+      el.appendChild(photoBtn);
+
+      const resize = mkBadge('admin-resize-handle', 'Redimensionner', RESIZE_SVG);
+      el.appendChild(resize);
+      attachResize(resize, () => el, () => parseLayout(photo.layout), (rows, cols) => {
+        const l = layoutFromRowsCols(rows, cols);
+        if (l) photo.layout = l; else delete photo.layout;
+        ctx.rerender();
       });
     }
 
-    function setPosActive(row, pos) {
-      row.querySelectorAll('[data-pos-opt]').forEach(btn => {
-        const a = btn.dataset.posOpt === pos;
-        btn.style.background = a ? '#1c1917' : ''; btn.style.color = a ? '#fff' : ''; btn.style.fontWeight = a ? '700' : '';
-      });
-    }
-
-    /* ── Ligne tip ───────────────────────────────────────────────── */
-    function createItemRow(item) {
-      const row = document.createElement('div');
-      row.dataset.itemRow = '1';
-      row.className = 'bg-gray-50 rounded-md p-3 space-y-2';
-      row.innerHTML = `
-        <div class="flex gap-2 items-stretch">
-          <button type="button" data-drag-handle title="Déplacer"
-            style="cursor:grab;display:flex;align-items:center;padding:4px 5px;border:none;background:none;border-radius:4px;flex-shrink:0;touch-action:none;-webkit-user-select:none;user-select:none;align-self:stretch">
-            <svg viewBox="0 0 8 14" width="10" height="14" fill="#d1d5db">
-              <circle cx="2" cy="2" r="1.2"/><circle cx="6" cy="2" r="1.2"/>
-              <circle cx="2" cy="7" r="1.2"/><circle cx="6" cy="7" r="1.2"/>
-              <circle cx="2" cy="12" r="1.2"/><circle cx="6" cy="12" r="1.2"/>
-            </svg>
-          </button>
-          <div class="flex-1 space-y-1.5 min-w-0">
-            <input data-field="title" type="text" placeholder="Titre du tip…"
-              class="w-full border border-gray-200 rounded-md px-3 py-2 text-sm font-medium bg-white focus:outline-none focus:border-gray-400 transition-colors" />
-            <textarea data-field="text" rows="2" placeholder="Texte du tip…"
-              class="w-full border border-gray-200 rounded-md px-3 py-2.5 text-sm resize-none bg-white focus:outline-none focus:border-gray-400 transition-colors leading-relaxed min-h-[52px]"></textarea>
-          </div>
-          <div class="flex flex-col gap-1 shrink-0 pt-0.5">
-            <button type="button" data-action="delete" class="w-9 h-9 flex items-center justify-center rounded-md text-gray-400 hover:text-red-500 hover:bg-white transition-colors text-xl leading-none" title="Supprimer">×</button>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 pl-1">
-          <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-10 shrink-0">Lien</span>
-          <input data-field="url" type="url" inputmode="url" placeholder="https://… ou tel:+596…"
-            class="flex-1 border border-gray-200 rounded-md px-2.5 py-2 text-xs text-gray-600 bg-white focus:outline-none focus:border-gray-400 transition-colors min-h-[36px]" />
-        </div>
-        <div class="flex items-center gap-2 pl-1">
-          <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-10 shrink-0">Photo</span>
-          <div class="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-            <div data-photo-preview class="w-14 h-10 rounded-md overflow-hidden bg-gray-200 shrink-0 hidden">
-              <img data-photo-img src="" alt="" class="w-full h-full object-cover" />
-            </div>
-            <label class="cursor-pointer shrink-0">
-              <span data-photo-label class="text-xs text-gray-500 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-md px-2.5 py-2 inline-flex items-center transition-colors whitespace-nowrap min-h-[36px]">+ Photo</span>
-              <input type="file" accept="image/*" class="hidden" data-photo-input />
-            </label>
-            <button type="button" data-unsplash-btn
-              class="text-xs text-gray-400 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-md px-2 py-2 inline-flex items-center gap-1 transition-colors whitespace-nowrap min-h-[36px] shrink-0">
-              <svg class="w-3 h-3" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="6"/><path d="m15 15 3 3" stroke-linecap="round"/></svg>
-              Unsplash
-            </button>
-            <button type="button" data-remove-photo class="hidden text-xs text-gray-400 hover:text-red-500 transition-colors py-2 px-1 min-h-[36px] whitespace-nowrap">Retirer</button>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 pl-1" data-layout-row>
-          <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-10 shrink-0">Format</span>
-          <!-- Grille 3×2 : ligne = rangées (1 ou 2), colonne = colonnes (1, 2, 3) -->
-          <div style="display:grid;grid-template-columns:repeat(3,44px);gap:3px;background:#f3f4f6;border-radius:7px;padding:3px">
-            <button type="button" data-layout-opt="1x1" title="1 rangée · 1 colonne"
-              style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;border-radius:5px;cursor:pointer;transition:background .12s,color .12s">
-              <span style="display:block;width:12px;height:12px;background:currentColor;border-radius:2px"></span>
-            </button>
-            <button type="button" data-layout-opt="1x2" title="1 rangée · 2 colonnes"
-              style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;border-radius:5px;cursor:pointer;transition:background .12s,color .12s">
-              <span style="display:block;width:24px;height:12px;background:currentColor;border-radius:2px"></span>
-            </button>
-            <button type="button" data-layout-opt="1x3" title="1 rangée · pleine largeur"
-              style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;border-radius:5px;cursor:pointer;transition:background .12s,color .12s">
-              <span style="display:block;width:34px;height:12px;background:currentColor;border-radius:2px"></span>
-            </button>
-            <button type="button" data-layout-opt="2x1" title="2 rangées · 1 colonne"
-              style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;border-radius:5px;cursor:pointer;transition:background .12s,color .12s">
-              <span style="display:block;width:12px;height:24px;background:currentColor;border-radius:2px"></span>
-            </button>
-            <button type="button" data-layout-opt="2x2" title="2 rangées · 2 colonnes"
-              style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;border-radius:5px;cursor:pointer;transition:background .12s,color .12s">
-              <span style="display:block;width:24px;height:24px;background:currentColor;border-radius:2px"></span>
-            </button>
-            <button type="button" data-layout-opt="2x3" title="2 rangées · pleine largeur"
-              style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;border-radius:5px;cursor:pointer;transition:background .12s,color .12s">
-              <span style="display:block;width:34px;height:24px;background:currentColor;border-radius:2px"></span>
-            </button>
-          </div>
-        </div>
-        <div class="flex items-start gap-2 pl-1 hidden" data-text-style-row>
-          <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-10 shrink-0 pt-1">Style</span>
-          <div class="flex flex-col gap-1.5">
-            <div class="flex items-center gap-1.5">
-              <span style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#d1d5db;width:24px;flex-shrink:0">Plat</span>
-              <div class="flex gap-1 flex-wrap">
-                <button type="button" data-text-style-opt="editorial" style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Édito</button>
-                <button type="button" data-text-style-opt="pullquote" style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Citation</button>
-                <button type="button" data-text-style-opt="stat"      style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Stat</button>
-                <button type="button" data-text-style-opt="rubrique"  style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Rubrique</button>
-              </div>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#d1d5db;width:24px;flex-shrink:0">Fond</span>
-              <div class="flex gap-1 flex-wrap">
-                <button type="button" data-text-style-opt="card"    style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Carte</button>
-                <button type="button" data-text-style-opt="sombre"  style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Sombre</button>
-                <button type="button" data-text-style-opt="note"    style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Note</button>
-                <button type="button" data-text-style-opt="encadre" style="font-size:10px;padding:5px 9px;border-radius:5px;border:none;cursor:pointer;font-weight:600;transition:background .12s,color .12s">Encadré</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 pl-1 hidden" data-position-row>
-          <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-10 shrink-0">Focus</span>
-          <div class="grid grid-cols-3 gap-px rounded-md overflow-hidden bg-gray-200" style="width:66px;height:50px">
-            <button type="button" data-pos-opt="top left"      class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↖</button>
-            <button type="button" data-pos-opt="top center"    class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↑</button>
-            <button type="button" data-pos-opt="top right"     class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↗</button>
-            <button type="button" data-pos-opt="center left"   class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">←</button>
-            <button type="button" data-pos-opt="center"        class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">·</button>
-            <button type="button" data-pos-opt="center right"  class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">→</button>
-            <button type="button" data-pos-opt="bottom left"   class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↙</button>
-            <button type="button" data-pos-opt="bottom center" class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↓</button>
-            <button type="button" data-pos-opt="bottom right"  class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↘</button>
-          </div>
-        </div>
-      `;
-
-      const ta = row.querySelector('textarea');
-      ta.value = item.text || '';
-      ta.addEventListener('input', () => autoResize(ta));
-      requestAnimationFrame(() => autoResize(ta));
-
-      row.querySelector('[data-field="url"]').value   = item.url   || '';
-      row.querySelector('[data-field="title"]').value = item.title || '';
-
-      row._photo          = item.photo          || '';
-      row._layout = (function(l){ return l==='default'?'1x1':l==='wide'?'2x1':l||'1x1'; })(item.layout);
-      row._objectPosition = item.objectPosition || 'center';
-      row._textStyle      = item.textStyle      || 'editorial';
-
-      setLayoutActive(row, row._layout);
-      setTextStyleActive(row, row._textStyle);
-      setPosActive(row, row._objectPosition);
-      updatePhotoUI(row, row._photo);
-
-      row.querySelectorAll('[data-layout-opt]').forEach(btn => btn.addEventListener('click', () => {
-        row._layout = btn.dataset.layoutOpt; setLayoutActive(row, row._layout);
-      }));
-      row.querySelectorAll('[data-text-style-opt]').forEach(btn => btn.addEventListener('click', () => {
-        row._textStyle = btn.dataset.textStyleOpt; setTextStyleActive(row, row._textStyle);
-      }));
-      row.querySelectorAll('[data-pos-opt]').forEach(btn => btn.addEventListener('click', () => {
-        row._objectPosition = btn.dataset.posOpt; setPosActive(row, row._objectPosition);
-      }));
-      row.querySelector('[data-photo-input]').addEventListener('change', async e => {
-        const f = e.target.files[0]; if (!f) return;
-        try { const d = await resizeImage(f); row._photo = d; updatePhotoUI(row, d); } catch {}
-        e.target.value = '';
-      });
-      row.querySelector('[data-unsplash-btn]').addEventListener('click', () => {
-        openUnsplashSearch(url => { row._photo = url; updatePhotoUI(row, url); });
-      });
-      row.querySelector('[data-remove-photo]').addEventListener('click', () => { row._photo = ''; updatePhotoUI(row, ''); });
-      row.addEventListener('click', e => {
-        const a = e.target.closest('[data-action]')?.dataset.action;
-        if (a === 'delete') { row.dataset.deleted='1'; row.style.cssText='opacity:0;transition:opacity .15s'; setTimeout(()=>row.remove(),150); }
-      });
-      return row;
-    }
-
-    /* ── Carte section ───────────────────────────────────────────── */
+    /* ── Carte section (classique) ──────────────────────────────────── */
     function createSectionCard(section) {
       const card = document.createElement('div');
       card.dataset.sectionId   = section.id;
       card.dataset.sectionIcon = section.icon || section.id || 'generalites';
       card.className = 'bg-white rounded-md border border-gray-200 overflow-hidden';
+      card._items = (section.items || []).map(i => ({ ...i }));
 
       const iconKey = section.icon || section.id || 'generalites';
       const header = document.createElement('div');
@@ -891,21 +1081,36 @@
 
       const body = document.createElement('div');
       body.dataset.body = '1';
-      body.className = 'p-4 space-y-2';
-      // Réduire par défaut sur mobile
+      body.className = 'p-4 admin-mirror';
       const startCollapsed = window.innerWidth < 768;
       if (startCollapsed) body.style.display = 'none';
-
-      (section.items || []).forEach(item => body.appendChild(createItemRow(item)));
       card.appendChild(body);
 
-      const footer = document.createElement('div');
-      footer.className = 'px-4 py-3 border-t border-gray-100 bg-gray-50/50';
-      footer.innerHTML = `<button type="button" data-add-item
-        class="text-xs text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-1.5 py-2 min-h-[44px]">
-        <span class="text-base font-light leading-none">+</span> Ajouter un tip
-      </button>`;
-      card.appendChild(footer);
+      function rerender() {
+        body.innerHTML = classicMirrorHtml(card._items);
+        const els = [...body.querySelectorAll('article')];
+        els.forEach((el, i) => decorateClassicItem(el, card._items[i], i, {
+          rerender,
+          onDelete(item) {
+            const i2 = card._items.indexOf(item);
+            if (i2 > -1) card._items.splice(i2, 1);
+            rerender();
+          },
+        }));
+        const addTile = document.createElement('div');
+        addTile.className = 'admin-add-tile';
+        addTile.style.cssText = 'margin-top:var(--sec-gap);border-radius:10px';
+        addTile.innerHTML = '<span style="font-size:26px;font-weight:300;color:#9ca3af">+</span>';
+        addTile.addEventListener('click', () => {
+          card._items.push({ title:'', text:'', url:'', photo:'', layout:'', textStyle:'editorial', objectPosition:'center' });
+          rerender();
+          const arts = body.querySelectorAll('p[contenteditable]');
+          arts[arts.length - 1]?.focus();
+        });
+        body.appendChild(addTile);
+      }
+      card._rerender = rerender;
+      rerender();
 
       header.querySelector('[data-icon-btn]').addEventListener('click', () => {
         openIconPicker(card.dataset.sectionIcon, key => {
@@ -942,13 +1147,6 @@
           setTimeout(() => card.remove(), 200);
         }
       });
-      footer.querySelector('[data-add-item]').addEventListener('click', () => {
-        const row = createItemRow({ text:'', url:'', photo:'', title:'' });
-        body.appendChild(row);
-        setCollapsed(false);
-        row.querySelector('textarea').focus();
-        row.scrollIntoView({ behavior:'smooth', block:'nearest' });
-      });
       return card;
     }
 
@@ -961,7 +1159,6 @@
       card.className = 'bg-white rounded-md border border-gray-200 overflow-hidden';
       card._albumPhotos = (section.photos || []).map(p => Object.assign({}, p));
 
-      /* ── En-tête ── */
       const iconKey = section.icon || 'camera';
       const header = document.createElement('div');
       header.className = 'px-4 py-3.5 bg-gray-50 border-b border-gray-100 flex items-center gap-3';
@@ -991,164 +1188,49 @@
         </div>`;
       card.appendChild(header);
 
-      /* ── Corps : grille de thumbnails ── */
       const body = document.createElement('div');
       body.dataset.body = '1';
-      body.className = 'p-4';
+      body.className = 'p-4 admin-mirror';
       const startCollapsed = window.innerWidth < 768;
       if (startCollapsed) body.style.display = 'none';
-
-      // Grille persistante — jamais reconstruite entièrement
-      const grid = document.createElement('div');
-      grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px';
-
-      const emptyMsg = document.createElement('div');
-      emptyMsg.style.cssText = 'text-align:center;padding:32px 16px;color:#d1d5db;font-size:12px;font-style:italic';
-      emptyMsg.textContent = 'Aucune photo — ajoutez des images ci-dessous';
-
-      function syncEmpty() {
-        if (card._albumPhotos.length === 0) {
-          grid.remove();
-          if (!emptyMsg.parentNode) body.appendChild(emptyMsg);
-        } else {
-          emptyMsg.remove();
-          if (!grid.parentNode) body.appendChild(grid);
-        }
-      }
-
-      // Crée un item thumbnail sans toucher aux autres
-      function createThumbItem(photo) {
-        const item = document.createElement('div');
-        item.style.cssText = 'display:flex;flex-direction:column;gap:5px;transition:opacity .15s,transform .15s';
-
-        const imgWrap = document.createElement('div');
-        imgWrap.style.cssText = 'border-radius:10px;overflow:hidden;position:relative;background:#f3f4f6;aspect-ratio:4/3';
-
-        const img = document.createElement('img');
-        img.src = photo.src;
-        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s ease';
-        imgWrap.appendChild(img);
-
-        const del = document.createElement('button');
-        del.type = 'button'; del.textContent = '×';
-        del.style.cssText = 'position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;padding:0;line-height:1;z-index:1';
-        imgWrap.addEventListener('mouseenter', () => { del.style.opacity='1'; img.style.transform='scale(1.04)'; });
-        imgWrap.addEventListener('mouseleave', () => { del.style.opacity='0'; img.style.transform=''; });
-
-        del.addEventListener('click', e => {
-          e.stopPropagation();
-          // Supprimer par référence, pas par index — stable quelle que soit la position
-          const i = card._albumPhotos.indexOf(photo);
-          if (i > -1) card._albumPhotos.splice(i, 1);
-          item.style.opacity = '0'; item.style.transform = 'scale(.9)';
-          setTimeout(() => { item.remove(); updateCount(); syncEmpty(); }, 160);
-        });
-        imgWrap.appendChild(del);
-
-        const cap = document.createElement('input');
-        cap.type = 'text'; cap.placeholder = 'Légende…'; cap.value = photo.caption || '';
-        cap.style.cssText = 'width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:5px 8px;font-size:11px;color:#374151;background:#fff;outline:none;font-family:inherit;box-sizing:border-box;transition:border-color .15s';
-        cap.addEventListener('focus', () => { cap.style.borderColor = '#9ca3af'; });
-        cap.addEventListener('blur',  () => { cap.style.borderColor = '#e5e7eb'; });
-        // Lié directement à l'objet photo (pas à idx) → stable après ajout/suppression
-        cap.addEventListener('input', () => { photo.caption = cap.value; });
-
-        // Badge format forcé (visible sur la vignette)
-        const sizeBadge = document.createElement('div');
-        sizeBadge.style.cssText = 'position:absolute;bottom:5px;left:5px;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.07em;background:rgba(0,0,0,.72);color:#fff;display:none;pointer-events:none;z-index:2;font-family:inherit';
-        imgWrap.appendChild(sizeBadge);
-
-        // Sélecteur de format — même grille 3×2 que les blocs classiques
-        // 1x1=auto · 1x2=large · 1x3=solo · 2x1=tall (portrait) · 2x2=large · 2x3=solo
-        const fmtOpts = [
-          { v:'1x1', title:'1 rangée · 1 colonne',     icon:'<span style="display:block;width:12px;height:12px;background:currentColor;border-radius:2px"></span>' },
-          { v:'1x2', title:'1 rangée · 2 colonnes',    icon:'<span style="display:block;width:24px;height:12px;background:currentColor;border-radius:2px"></span>' },
-          { v:'1x3', title:'1 rangée · pleine largeur',icon:'<span style="display:block;width:34px;height:12px;background:currentColor;border-radius:2px"></span>' },
-          { v:'2x1', title:'2 rangées · 1 colonne',    icon:'<span style="display:block;width:12px;height:24px;background:currentColor;border-radius:2px"></span>' },
-          { v:'2x2', title:'2 rangées · 2 colonnes',   icon:'<span style="display:block;width:24px;height:24px;background:currentColor;border-radius:2px"></span>' },
-          { v:'2x3', title:'2 rangées · pleine largeur',icon:'<span style="display:block;width:34px;height:24px;background:currentColor;border-radius:2px"></span>' },
-        ];
-        const sizeRow = document.createElement('div');
-        sizeRow.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:3px;background:#f3f4f6;border-radius:7px;padding:3px';
-        function refreshSize() {
-          const cur = photo.layout || '1x1';
-          sizeRow.querySelectorAll('[data-fv]').forEach(b => {
-            const on = cur === b.dataset.fv;
-            b.style.background = on ? '#1c1917' : 'transparent';
-            b.style.color = on ? '#fff' : '#9ca3af';
-          });
-          sizeBadge.style.display = (cur && cur !== '1x1') ? 'block' : 'none';
-          if (cur && cur !== '1x1') sizeBadge.textContent = cur.toUpperCase();
-        }
-        fmtOpts.forEach(({ v, title, icon }) => {
-          const b = document.createElement('button');
-          b.type = 'button'; b.dataset.fv = v; b.title = title; b.innerHTML = icon;
-          b.style.cssText = 'height:36px;display:flex;align-items:center;justify-content:center;border:none;border-radius:5px;cursor:pointer;transition:background .12s,color .12s';
-          b.addEventListener('click', () => {
-            if (v === '1x1') delete photo.layout; else photo.layout = v;
-            refreshSize();
-          });
-          sizeRow.appendChild(b);
-        });
-        refreshSize();
-
-        item.appendChild(imgWrap);
-        item.appendChild(cap);
-        item.appendChild(sizeRow);
-        return item;
-      }
-
-      // Rendu initial
-      card._albumPhotos.forEach(photo => grid.appendChild(createThumbItem(photo)));
-      syncEmpty();
       card.appendChild(body);
 
-      /* ── Pied de page : ajouter des photos ── */
-      const footer = document.createElement('div');
-      footer.className = 'px-4 py-3 border-t border-gray-100 bg-gray-50/50 flex items-center gap-4';
-      const countEl = document.createElement('span');
-      countEl.style.cssText = 'font-size:10px;color:#d1d5db;margin-left:auto';
-      function updateCount() {
-        const n = card._albumPhotos.length;
-        countEl.textContent = n + ' photo' + (n !== 1 ? 's' : '');
-      }
-      updateCount();
-
-      const addLabel = document.createElement('label');
-      addLabel.style.cssText = 'cursor:pointer';
-      addLabel.innerHTML = `
-        <span class="text-xs text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-1.5 py-2 min-h-[44px]">
-          <span style="font-size:16px;font-weight:300;line-height:1">+</span> Ajouter des photos
-        </span>`;
-      const fileInput = document.createElement('input');
-      fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.multiple = true;
-      fileInput.style.display = 'none';
-      fileInput.addEventListener('change', async e => {
-        const files = [...e.target.files]; if (!files.length) return;
-        const addBtn = addLabel.querySelector('span');
-        addBtn.textContent = 'Importation…';
-        for (const file of files) {
-          try {
-            const photo = await resizeImageForAlbum(file);
-            card._albumPhotos.push(photo);
-            grid.appendChild(createThumbItem(photo));
-          } catch {}
+      function rerender() {
+        if (!card._albumPhotos.length) {
+          body.innerHTML = '<div style="text-align:center;padding:32px 16px;color:#d1d5db;font-size:12px;font-style:italic">Aucune photo — utilisez la tuile « + » ci-dessous</div>';
+        } else {
+          body.innerHTML = GuideEngine.renderAlbumSection({ photos: card._albumPhotos });
+          const cells = [...body.querySelectorAll('.album-cell')];
+          cells.forEach((el, i) => decorateAlbumCell(el, card._albumPhotos[i], i, {
+            rerender,
+            onDelete(photo) {
+              const i2 = card._albumPhotos.indexOf(photo);
+              if (i2 > -1) card._albumPhotos.splice(i2, 1);
+              rerender();
+            },
+          }));
         }
-        addBtn.innerHTML = `<span style="font-size:16px;font-weight:300;line-height:1">+</span> Ajouter des photos`;
-        updateCount(); syncEmpty();
-        e.target.value = '';
-      });
-      addLabel.appendChild(fileInput);
-      footer.appendChild(addLabel);
-      footer.appendChild(countEl);
-      card.appendChild(footer);
+        const addTile = document.createElement('div');
+        addTile.className = 'admin-add-tile';
+        addTile.style.cssText = 'margin-top:var(--alb-gap,var(--sec-gap));border-radius:10px;min-height:90px';
+        addTile.innerHTML = '<span style="font-size:26px;font-weight:300;color:#9ca3af">+</span>';
+        addTile.addEventListener('click', () => {
+          pickAlbumFiles(async files => {
+            for (const file of files) {
+              try { card._albumPhotos.push(await resizeImageForAlbum(file)); } catch {}
+            }
+            rerender();
+          });
+        });
+        body.appendChild(addTile);
+      }
+      card._rerender = rerender;
+      rerender();
 
-      /* ── Collapse ── */
       const collapseBtn = header.querySelector('[data-collapse]');
       const chevron = collapseBtn.querySelector('[data-chevron]');
       function setCollapsed(on) {
         body.style.display = on ? 'none' : 'block';
-        footer.style.display = on ? 'none' : '';
         if (chevron) chevron.style.transform = on ? 'rotate(-45deg)' : 'rotate(45deg)';
       }
       setCollapsed(startCollapsed);
@@ -1157,7 +1239,6 @@
         setCollapsed(body.style.display !== 'none');
       };
 
-      /* ── Icône ── */
       header.querySelector('[data-icon-btn]').addEventListener('click', () => {
         openIconPicker(card.dataset.sectionIcon, key => {
           card.dataset.sectionIcon = key;
@@ -1165,7 +1246,6 @@
         });
       });
 
-      /* ── Suppression ── */
       let _deleteArmed = false, _deleteTimer = null;
       header.querySelector('[data-sec-delete]').addEventListener('click', function() {
         const btn = this;
@@ -1187,29 +1267,43 @@
       return card;
     }
 
-    /* ── Drag & Drop (sections + tips) ──────────────────────────── */
+    /* ── Drag & Drop (sections + tips + photos) ────────────────────── */
     (function () {
-      let d = null; // { el, parent, ghost, ox, oy }
+      let d = null;
+
+      function arrOf(card) { return card.dataset.sectionType === 'album' ? card._albumPhotos : card._items; }
 
       document.addEventListener('pointerdown', function (e) {
         if (!e.target.closest('[data-drag-handle]')) return;
-        const el = e.target.closest('[data-section-id], [data-item-row]');
+        const el = e.target.closest('[data-section-id], [data-mirror-item]');
         if (!el) return;
-        const parent = el.parentElement;
         e.preventDefault();
 
+        const isSec = el.dataset.sectionId !== undefined;
+        const parent = el.parentElement;
         const r = el.getBoundingClientRect();
         const ghost = el.cloneNode(true);
         ghost.style.cssText =
           'position:fixed;pointer-events:none;z-index:9999' +
-          ';width:' + r.width + 'px;top:' + r.top + 'px;left:' + r.left + 'px' +
+          ';width:' + r.width + 'px;height:' + r.height + 'px;top:' + r.top + 'px;left:' + r.left + 'px' +
           ';opacity:.92;box-shadow:0 12px 32px rgba(0,0,0,.22);border-radius:8px' +
           ';transform:rotate(.4deg) scale(1.012);transition:none';
         document.body.appendChild(ghost);
-        el.style.opacity = '.2';
+        el.style.opacity = '.25';
         document.body.style.userSelect = 'none';
         document.body.style.webkitUserSelect = 'none';
-        d = { el, parent, ghost, ox: e.clientX - r.left, oy: e.clientY - r.top };
+
+        d = { el, parent, ghost, ox: e.clientX - r.left, oy: e.clientY - r.top, isSec };
+
+        if (!isSec) {
+          const sourceCard = el.closest('[data-section-id]');
+          d.sourceCard = sourceCard;
+          d.kind = sourceCard.dataset.sectionType === 'album' ? 'album' : 'classic';
+          d.sourceArr = arrOf(sourceCard);
+          d.sourceIdx = +el.dataset.idx;
+          d.targetCard = sourceCard;
+          d.targetIdx = d.sourceIdx;
+        }
       });
 
       document.addEventListener('pointermove', function (e) {
@@ -1218,10 +1312,8 @@
         d.ghost.style.top  = (e.clientY - d.oy) + 'px';
         d.ghost.style.left = (e.clientX - d.ox) + 'px';
 
-        const isSec = d.el.dataset.sectionId !== undefined;
-
-        if (isSec) {
-          /* ── Réordonner les sections ── */
+        if (d.isSec) {
+          /* ── Réordonner les sections (déplacement live du DOM, comme avant) ── */
           const siblings = [...d.parent.querySelectorAll(':scope > [data-section-id]')].filter(s => s !== d.el);
           let before = null;
           for (const s of siblings) {
@@ -1229,39 +1321,65 @@
             if (e.clientY < r.top + r.height * 0.5) { before = s; break; }
           }
           before ? d.parent.insertBefore(d.el, before) : d.parent.appendChild(d.el);
-
-        } else {
-          /* ── Réordonner les tips (inter-sections) ── */
-          // Trouver quelle section est sous le pointeur
-          let targetBody = null;
-          for (const card of document.querySelectorAll('[data-section-id]')) {
-            const r = card.getBoundingClientRect();
-            if (e.clientY >= r.top && e.clientY <= r.bottom) {
-              const body = card.querySelector('[data-body="1"]');
-              // N'accepter que les sections ouvertes (ou vides mais visibles)
-              if (body && body.style.display !== 'none') targetBody = body;
-              break;
-            }
-          }
-          if (!targetBody) return;
-
-          // Mettre à jour le parent courant si on change de section
-          if (d.parent !== targetBody) d.parent = targetBody;
-
-          const items = [...targetBody.querySelectorAll(':scope > [data-item-row]')].filter(s => s !== d.el);
-          let before = null;
-          for (const s of items) {
-            const r = s.getBoundingClientRect();
-            if (e.clientY < r.top + r.height * 0.5) { before = s; break; }
-          }
-          before ? targetBody.insertBefore(d.el, before) : targetBody.appendChild(d.el);
+          return;
         }
+
+        /* ── Réordonner tips/photos : la position réelle dépend d'un pattern calculé,
+           donc pas de déplacement live du DOM — on surligne juste la cible et on
+           committe (array + re-rendu de la section) au relâchement. ── */
+        let targetCard = null;
+        for (const card of document.querySelectorAll('[data-section-id]')) {
+          const isAlbum = card.dataset.sectionType === 'album';
+          if ((isAlbum ? 'album' : 'classic') !== d.kind) continue;
+          const r = card.getBoundingClientRect();
+          if (e.clientY >= r.top && e.clientY <= r.bottom) {
+            const body = card.querySelector('[data-body="1"]');
+            if (body && body.style.display !== 'none') targetCard = card;
+            break;
+          }
+        }
+        document.querySelectorAll('.admin-drop-target').forEach(x => x.classList.remove('admin-drop-target'));
+        if (!targetCard) { d.targetCard = null; return; }
+
+        const candidates = [...targetCard.querySelectorAll('[data-mirror-item]')].filter(x => x !== d.el);
+        if (!candidates.length) { d.targetCard = targetCard; d.targetIdx = 0; return; }
+
+        // Plus proche voisin par distance au centre (grille 2D à motifs)
+        let nearest = null, nearestDist = Infinity;
+        for (const c of candidates) {
+          const r = c.getBoundingClientRect();
+          const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+          const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+          if (dist < nearestDist) { nearestDist = dist; nearest = c; }
+        }
+        nearest.classList.add('admin-drop-target');
+        const nr = nearest.getBoundingClientRect();
+        const before = e.clientX < nr.left + nr.width / 2;
+        let idx = +nearest.dataset.idx;
+        if (!before) idx += 1;
+        d.targetCard = targetCard;
+        d.targetIdx = idx;
       }, { passive: false });
 
       function endDrag() {
         if (!d) return;
+        document.querySelectorAll('.admin-drop-target').forEach(x => x.classList.remove('admin-drop-target'));
+        if (!d.isSec) {
+          if (d.targetCard) {
+            const [moved] = d.sourceArr.splice(d.sourceIdx, 1);
+            let idx = d.targetIdx;
+            if (d.targetCard === d.sourceCard && idx > d.sourceIdx) idx -= 1;
+            const dstArr = arrOf(d.targetCard);
+            dstArr.splice(Math.max(0, Math.min(idx, dstArr.length)), 0, moved);
+            d.sourceCard._rerender();
+            if (d.targetCard !== d.sourceCard) d.targetCard._rerender();
+          } else {
+            d.el.style.opacity = '';
+          }
+        } else {
+          d.el.style.opacity = '';
+        }
         d.ghost.remove();
-        d.el.style.opacity = '';
         document.body.style.userSelect = '';
         document.body.style.webkitUserSelect = '';
         d = null;
@@ -1336,16 +1454,17 @@
           }
           return {
             ...base,
-            items: Array.from(card.querySelectorAll('[data-item-row]:not([data-deleted])'))
-              .map(row => ({
-                title:          row.querySelector('[data-field="title"]').value.trim(),
-                text:           row.querySelector('[data-field="text"]').value.trim(),
-                url:            row.querySelector('[data-field="url"]').value.trim(),
-                photo:          row._photo          || '',
-                layout:         row._layout         || '1x1',
-                textStyle:      row._textStyle      || 'editorial',
-                objectPosition: row._objectPosition || 'center',
-              })).filter(item => item.text),
+            items: (card._items || [])
+              .map(item => ({
+                title:          (item.title || '').trim(),
+                text:           (item.text  || '').trim(),
+                url:            (item.url   || '').trim(),
+                photo:          item.photo          || '',
+                layout:         item.layout         || '',
+                textStyle:      item.textStyle      || 'editorial',
+                objectPosition: item.objectPosition || 'center',
+              }))
+              .filter(item => item.text || item.photo),
           };
         }),
       };

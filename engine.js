@@ -48,6 +48,7 @@
     _scrolled = on;
     const h = document.getElementById('site-header');
     const b = document.getElementById('header-brand');
+    if (!h || !b) return; // pas de header sur les pages qui embarquent le moteur sans le markup du site (ex: admin)
     h.style.cssText = on
       ? 'background:rgba(232,228,223,.97);backdrop-filter:blur(16px);border-bottom:1px solid rgba(175,165,152,.3)'
       : '';
@@ -583,5 +584,12 @@
   window.toggleFav = toggleFav;
   window.toggleFavLb = toggleFavLb;
 
-  window.GuideEngine = { init };
+  window.GuideEngine = {
+    init,
+    // Primitives de rendu exposées pour réutilisation par l'admin (miroir visuel).
+    // Additif uniquement — ne change rien au comportement du site public.
+    renderItem, renderClassicSection, renderAlbumSection,
+    _albumGroups, _ALB_PAT, _CLS_PAT, _PAT_SOLO, _PAT_DUO, _PAT_TRIO, _albSz,
+    illus, esc,
+  };
 })();
