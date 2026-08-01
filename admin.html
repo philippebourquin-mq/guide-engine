@@ -18,46 +18,39 @@
     textarea { field-sizing: content; }
 
     /* ── Éditeur miroir ──────────────────────────────────────────── */
+    /* Un seul mode : tout est éditable en permanence (déjà derrière le login admin).
+       Les contrôles restent discrets — même langage visuel que .album-star sur le site
+       (icône blanche + ombre portée, pas de pastille pleine) — et se révèlent au survol/tap. */
     .admin-mirror { position: relative; }
-    .admin-mirror article, .admin-mirror .album-cell { position: relative; }
+    .admin-mirror article, .admin-mirror .album-cell { position: relative; cursor: default; }
     .admin-mirror [contenteditable]:focus { outline: 2px solid #3b82f6; outline-offset: 2px; border-radius: 4px; }
     .admin-mirror [contenteditable]:empty::before {
       content: attr(data-placeholder); color: rgba(120,113,108,.45); pointer-events: none;
     }
-    .admin-handle, .admin-delete-badge, .admin-resize-handle, .admin-add-tile, .admin-photo-badge, .admin-options-badge { display: none; }
-    .admin-edit-on .admin-handle, .admin-edit-on .admin-delete-badge, .admin-edit-on .admin-photo-badge, .admin-edit-on .admin-options-badge,
-    .admin-edit-on .admin-resize-handle, .admin-edit-on .admin-add-tile { display: flex; }
-    .admin-edit-on .admin-mirror article, .admin-edit-on .admin-mirror .album-cell { cursor: default; }
-    .admin-drag-handle {
-      position: absolute; top: 6px; left: 6px; z-index: 3; width: 30px; height: 30px; border-radius: 8px;
-      background: rgba(0,0,0,.55); align-items: center; justify-content: center; cursor: grab; touch-action: none;
+    .admin-handle {
+      display: flex; align-items: center; justify-content: center;
+      position: absolute; z-index: 3; border: none; background: none; padding: 0; margin: 0;
+      cursor: pointer; transition: opacity .15s, color .15s;
+      color: #a8a29e; opacity: .8; /* cartes claires (texte sans photo) */
     }
-    .admin-delete-badge {
-      position: absolute; top: 6px; right: 6px; z-index: 3; width: 24px; height: 24px; border-radius: 50%;
-      background: #ef4444; color: #fff; align-items: center; justify-content: center; cursor: pointer;
-      font-size: 15px; line-height: 1; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3);
+    /* Cartes avec photo (fond sombre sous l'image) : icônes blanches + ombre, comme .album-star */
+    .admin-mirror :is(article, .album-cell):has(img) .admin-handle {
+      color: #fff; opacity: .6;
+      text-shadow: 0 0 3px rgba(0,0,0,.55), 0 0 7px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.5);
     }
-    .admin-resize-handle {
-      position: absolute; bottom: 4px; right: 4px; z-index: 3; width: 22px; height: 22px; border-radius: 6px;
-      background: rgba(0,0,0,.55); align-items: center; justify-content: center; cursor: nwse-resize; touch-action: none;
-    }
-    .admin-photo-badge {
-      position: absolute; bottom: 6px; left: 6px; z-index: 3; width: 30px; height: 30px; border-radius: 8px;
-      background: rgba(0,0,0,.55); align-items: center; justify-content: center; cursor: pointer;
-    }
-    .admin-photo-badge.admin-photo-badge-empty {
-      position: static; width: 100%; height: 100%; min-height: 90px; border-radius: 10px;
-      background: #f3f4f6; color: #9ca3af; border: 1.5px dashed #d1d5db;
-    }
-    .admin-options-badge {
-      position: absolute; top: 6px; left: 50%; transform: translateX(-50%); z-index: 3; width: 26px; height: 26px;
-      border-radius: 8px; background: rgba(0,0,0,.55); align-items: center; justify-content: center; cursor: pointer;
-    }
+    .admin-mirror article:hover .admin-handle, .admin-mirror .album-cell:hover .admin-handle,
+    .admin-handle:hover, .admin-handle:focus-visible { opacity: 1; }
+    .admin-drag-handle   { top: 8px; left: 8px; width: 26px; height: 26px; cursor: grab; touch-action: none; }
+    .admin-delete-badge  { top: 8px; right: 8px; width: 24px; height: 24px; font-size: 19px; font-weight: 300; line-height: 1; }
+    .admin-delete-badge:hover { color: #ef4444; }
+    .admin-photo-badge   { bottom: 8px; left: 8px; width: 26px; height: 26px; }
+    .admin-options-badge { top: 8px; left: 50%; transform: translateX(-50%); width: 24px; height: 24px; }
+    .admin-resize-handle { bottom: 8px; right: 8px; width: 24px; height: 24px; cursor: nwse-resize; touch-action: none; }
     .admin-add-tile {
-      align-items: center; justify-content: center; border: 2px dashed #d1d5db; border-radius: 12px;
-      color: #9ca3af; cursor: pointer; min-height: 120px; background: #fafaf9; transition: background .15s, border-color .15s;
+      display: flex; align-items: center; justify-content: center; border: 1.5px dashed #d6d3d1; border-radius: 12px;
+      color: #c7c2bd; cursor: pointer; min-height: 110px; background: transparent; transition: background .15s, border-color .15s, color .15s;
     }
-    .admin-add-tile:hover { background: #f3f4f6; border-color: #9ca3af; color: #6b7280; }
+    .admin-add-tile:hover { background: #fafaf9; border-color: #a8a29e; color: #78716c; }
     .admin-resize-ghost {
       position: fixed; z-index: 9999; pointer-events: none; border: 2px dashed #3b82f6;
       background: rgba(59,130,246,.08); border-radius: 10px;
@@ -396,10 +389,6 @@
       <button id="preview-btn"
         class="text-xs text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-400 rounded-md px-3 py-2 transition-colors whitespace-nowrap hidden md:block">
         Voir le site ↗
-      </button>
-      <button id="edit-mode-btn" type="button"
-        class="text-xs font-semibold border border-gray-200 hover:border-gray-400 text-gray-600 rounded-md px-4 py-2 transition-colors whitespace-nowrap min-h-[36px]">
-        Modifier
       </button>
       <button id="save-btn"
         class="text-xs font-semibold bg-gray-900 text-white hover:bg-gray-700 active:bg-gray-800 rounded-md px-4 py-2 transition-colors whitespace-nowrap min-h-[36px]">
@@ -766,10 +755,7 @@
       document.getElementById('icon-picker').classList.add('hidden'); _iconCb = null;
     });
 
-    /* ── Photo UI ────────────────────────────────────────────────── */
-    /* ══ Éditeur miroir — état + helpers partagés ═══════════════════ */
-    let _adminEditMode = false;
-
+    /* ══ Éditeur miroir — helpers partagés ═══════════════════════════ */
     function parseLayout(raw) {
       const key = raw === 'default' ? '1x1' : raw === 'wide' ? '1x2' : raw || '1x1';
       const m = key.match(/^(\d)x(\d)$/);
@@ -845,17 +831,6 @@
         document.addEventListener('pointerup', up);
       });
     }
-
-    function toggleEditMode(on) {
-      _adminEditMode = on;
-      document.getElementById('sections-container').classList.toggle('admin-edit-on', on);
-      const btn = document.getElementById('edit-mode-btn');
-      btn.textContent = on ? 'Terminé' : 'Modifier';
-      btn.className = on
-        ? 'text-xs font-semibold bg-gray-900 text-white rounded-md px-4 py-2 transition-colors whitespace-nowrap min-h-[36px]'
-        : 'text-xs font-semibold border border-gray-200 hover:border-gray-400 text-gray-600 rounded-md px-4 py-2 transition-colors whitespace-nowrap min-h-[36px]';
-    }
-    document.getElementById('edit-mode-btn').addEventListener('click', () => toggleEditMode(!_adminEditMode));
 
     /* ── Modale options d'un tip (lien / style / focus / photo) ────── */
     let _itemOpt = null; // { item, onChange }
