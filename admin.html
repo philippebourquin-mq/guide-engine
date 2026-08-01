@@ -27,30 +27,29 @@
     .admin-mirror [contenteditable]:empty::before {
       content: attr(data-placeholder); color: rgba(120,113,108,.45); pointer-events: none;
     }
+    /* Pastille sombre translucide constante : lisible quel que soit ce qu'il y a dessous
+       (carte claire, photo claire ou sombre) — pas besoin de deviner le contraste. */
     .admin-handle {
       display: flex; align-items: center; justify-content: center;
-      position: absolute; z-index: 3; border: none; background: none; padding: 0; margin: 0;
-      cursor: pointer; transition: opacity .15s, color .15s;
-      color: #a8a29e; opacity: .8; /* cartes claires (texte sans photo) */
-    }
-    /* Cartes avec photo (fond sombre sous l'image) : icônes blanches + ombre, comme .album-star */
-    .admin-mirror :is(article, .album-cell):has(img) .admin-handle {
-      color: #fff; opacity: .6;
-      text-shadow: 0 0 3px rgba(0,0,0,.55), 0 0 7px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.5);
+      position: absolute; z-index: 3; border: none; padding: 0; margin: 0;
+      cursor: pointer; transition: opacity .15s, background-color .15s;
+      color: #fff; opacity: .5; background: rgba(28,25,23,.45); backdrop-filter: blur(3px);
+      border-radius: 50%;
     }
     .admin-mirror article:hover .admin-handle, .admin-mirror .album-cell:hover .admin-handle,
     .admin-handle:hover, .admin-handle:focus-visible { opacity: 1; }
-    .admin-drag-handle   { top: 8px; left: 8px; width: 26px; height: 26px; cursor: grab; touch-action: none; }
-    .admin-delete-badge  { top: 8px; right: 8px; width: 24px; height: 24px; font-size: 19px; font-weight: 300; line-height: 1; }
-    .admin-delete-badge:hover { color: #ef4444; }
-    .admin-photo-badge   { bottom: 8px; left: 8px; width: 26px; height: 26px; }
-    .admin-options-badge { top: 8px; left: 50%; transform: translateX(-50%); width: 24px; height: 24px; }
-    .admin-resize-handle { bottom: 8px; right: 8px; width: 24px; height: 24px; cursor: nwse-resize; touch-action: none; }
+    .admin-drag-handle    { top: 7px; left: 7px; width: 26px; height: 26px; cursor: grab; touch-action: none; }
+    .admin-delete-badge   { top: 7px; right: 7px; width: 24px; height: 24px; font-size: 17px; font-weight: 300; line-height: 1; }
+    .admin-delete-badge:hover { background-color: #ef4444; }
+    .admin-photo-badge    { bottom: 7px; left: 7px; width: 26px; height: 26px; }
+    .admin-options-badge  { bottom: 7px; left: 7px; width: 26px; height: 26px; }
+    .admin-resize-handle  { bottom: 7px; right: 7px; width: 24px; height: 24px; cursor: nwse-resize; touch-action: none; }
     .admin-add-tile {
-      display: flex; align-items: center; justify-content: center; border: 1.5px dashed #d6d3d1; border-radius: 12px;
-      color: #c7c2bd; cursor: pointer; min-height: 110px; background: transparent; transition: background .15s, border-color .15s, color .15s;
+      display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%;
+      border: 1.5px solid #e7e5e4; color: #a8a29e; cursor: pointer; background: #fff;
+      font-size: 17px; font-weight: 300; transition: background .15s, border-color .15s, color .15s;
     }
-    .admin-add-tile:hover { background: #fafaf9; border-color: #a8a29e; color: #78716c; }
+    .admin-add-tile:hover { background: #fafaf9; border-color: #a8a29e; color: #57534e; }
     .admin-resize-ghost {
       position: fixed; z-index: 9999; pointer-events: none; border: 2px dashed #3b82f6;
       background: rgba(59,130,246,.08); border-radius: 10px;
@@ -308,20 +307,7 @@
           </div>
         </div>
       </div>
-      <div id="item-opt-position-wrap" class="hidden">
-        <label class="text-[10px] text-gray-400 block mb-1.5">Focus de la photo</label>
-        <div class="grid grid-cols-3 gap-px rounded-md overflow-hidden bg-gray-200" style="width:66px;height:50px">
-          <button type="button" data-pos-opt="top left"      class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↖</button>
-          <button type="button" data-pos-opt="top center"    class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↑</button>
-          <button type="button" data-pos-opt="top right"     class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↗</button>
-          <button type="button" data-pos-opt="center left"   class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">←</button>
-          <button type="button" data-pos-opt="center"        class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">·</button>
-          <button type="button" data-pos-opt="center right"  class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">→</button>
-          <button type="button" data-pos-opt="bottom left"   class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↙</button>
-          <button type="button" data-pos-opt="bottom center" class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↓</button>
-          <button type="button" data-pos-opt="bottom right"  class="flex items-center justify-center text-[10px] bg-gray-100 hover:bg-white text-gray-400 hover:text-gray-800 transition-colors">↘</button>
-        </div>
-      </div>
+      <p id="item-opt-focus-hint" class="hidden text-[10px] text-gray-400 leading-relaxed">Focus de la photo : cliquer directement sur l'image dans la carte pour la recentrer.</p>
       <button id="item-opt-close" type="button"
         class="w-full py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-md hover:bg-gray-700 transition-colors">
         Fermer
@@ -840,20 +826,13 @@
         btn.style.background = on ? '#111827' : '#f3f4f6'; btn.style.color = on ? '#fff' : '#6b7280';
       });
     }
-    function refreshItemOptPos(pos) {
-      document.querySelectorAll('#item-options-modal [data-pos-opt]').forEach(btn => {
-        const on = btn.dataset.posOpt === pos;
-        btn.style.background = on ? '#1c1917' : ''; btn.style.color = on ? '#fff' : ''; btn.style.fontWeight = on ? '700' : '';
-      });
-    }
     function openItemOptions(item, onChange) {
       _itemOpt = { item, onChange };
       document.getElementById('item-opt-url').value = item.url || '';
       const hasPhoto = !!item.photo?.trim();
       document.getElementById('item-opt-textstyle-wrap').classList.toggle('hidden', hasPhoto);
-      document.getElementById('item-opt-position-wrap').classList.toggle('hidden', !hasPhoto);
+      document.getElementById('item-opt-focus-hint').classList.toggle('hidden', !hasPhoto);
       refreshItemOptTextStyle(item.textStyle || 'editorial');
-      refreshItemOptPos(item.objectPosition || 'center');
       document.getElementById('item-options-modal').classList.remove('hidden');
     }
     function closeItemOptions() { document.getElementById('item-options-modal').classList.add('hidden'); _itemOpt = null; }
@@ -866,14 +845,6 @@
         _itemOpt.item.textStyle = btn.dataset.textStyleOpt;
         refreshItemOptTextStyle(btn.dataset.textStyleOpt);
         _itemOpt.onChange('textStyle');
-      });
-    });
-    document.querySelectorAll('#item-options-modal [data-pos-opt]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (!_itemOpt) return;
-        _itemOpt.item.objectPosition = btn.dataset.posOpt;
-        refreshItemOptPos(btn.dataset.posOpt);
-        _itemOpt.onChange('pos');
       });
     });
     document.getElementById('item-opt-photo-input').addEventListener('change', async e => {
@@ -938,19 +909,12 @@
       del.addEventListener('click', e => { e.stopPropagation(); ctx.onDelete(item); });
       el.appendChild(del);
 
-      const photoBtn = mkBadge('admin-photo-badge', item.photo ? 'Changer la photo' : 'Ajouter une photo', PHOTO_SVG);
-      photoBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        pickPhotoFile(dataUrl => { item.photo = dataUrl; ctx.rerender(); });
-      });
-      el.appendChild(photoBtn);
-
+      // Photo (ajout/remplacement/retrait) regroupée avec les autres réglages secondaires
       const opt = mkBadge('admin-options-badge', 'Options', OPT_SVG);
       opt.addEventListener('click', e => {
         e.stopPropagation();
         openItemOptions(item, kind => {
           if (kind === 'textStyle' || kind === 'photo') ctx.rerender();
-          else if (kind === 'pos') { const img = el.querySelector('img'); if (img) img.style.objectPosition = item.objectPosition; }
         });
       });
       el.appendChild(opt);
@@ -962,6 +926,21 @@
         if (l) item.layout = l; else delete item.layout;
         ctx.rerender();
       });
+
+      // Focus de la photo : clic direct sur l'image plutôt qu'un réglage séparé
+      const img = el.querySelector('img');
+      if (img) {
+        img.style.cursor = 'crosshair';
+        img.title = 'Cliquer pour recentrer la photo';
+        img.addEventListener('click', e => {
+          e.stopPropagation();
+          const r = img.getBoundingClientRect();
+          const x = Math.round(((e.clientX - r.left) / r.width) * 100);
+          const y = Math.round(((e.clientY - r.top) / r.height) * 100);
+          item.objectPosition = `${Math.max(0, Math.min(100, x))}% ${Math.max(0, Math.min(100, y))}%`;
+          img.style.objectPosition = item.objectPosition;
+        });
+      }
     }
 
     /* ── Section album — rendu miroir (réutilise GuideEngine) ──────── */
@@ -1072,17 +1051,19 @@
             rerender();
           },
         }));
-        const addTile = document.createElement('div');
-        addTile.className = 'admin-add-tile';
-        addTile.style.cssText = 'margin-top:var(--sec-gap);border-radius:10px';
-        addTile.innerHTML = '<span style="font-size:26px;font-weight:300;color:#9ca3af">+</span>';
+        const addRow = document.createElement('div');
+        addRow.style.cssText = 'display:flex;margin-top:var(--sec-gap)';
+        const addTile = document.createElement('button');
+        addTile.type = 'button'; addTile.className = 'admin-add-tile'; addTile.title = 'Ajouter un tip';
+        addTile.textContent = '+';
         addTile.addEventListener('click', () => {
           card._items.push({ title:'', text:'', url:'', photo:'', layout:'', textStyle:'editorial', objectPosition:'center' });
           rerender();
           const arts = body.querySelectorAll('p[contenteditable]');
           arts[arts.length - 1]?.focus();
         });
-        body.appendChild(addTile);
+        addRow.appendChild(addTile);
+        body.appendChild(addRow);
       }
       card._rerender = rerender;
       rerender();
@@ -1185,10 +1166,11 @@
             },
           }));
         }
-        const addTile = document.createElement('div');
-        addTile.className = 'admin-add-tile';
-        addTile.style.cssText = 'margin-top:var(--alb-gap,var(--sec-gap));border-radius:10px;min-height:90px';
-        addTile.innerHTML = '<span style="font-size:26px;font-weight:300;color:#9ca3af">+</span>';
+        const addRow = document.createElement('div');
+        addRow.style.cssText = 'display:flex;margin-top:var(--alb-gap,var(--sec-gap))';
+        const addTile = document.createElement('button');
+        addTile.type = 'button'; addTile.className = 'admin-add-tile'; addTile.title = 'Ajouter des photos';
+        addTile.textContent = '+';
         addTile.addEventListener('click', () => {
           pickAlbumFiles(async files => {
             for (const file of files) {
@@ -1197,7 +1179,8 @@
             rerender();
           });
         });
-        body.appendChild(addTile);
+        addRow.appendChild(addTile);
+        body.appendChild(addRow);
       }
       card._rerender = rerender;
       rerender();
@@ -1327,13 +1310,10 @@
           const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
           if (dist < nearestDist) { nearestDist = dist; nearest = c; }
         }
+        // Se placer au niveau d'une carte suffit — pas besoin de dépasser son centre
         nearest.classList.add('admin-drop-target');
-        const nr = nearest.getBoundingClientRect();
-        const before = e.clientX < nr.left + nr.width / 2;
-        let idx = +nearest.dataset.idx;
-        if (!before) idx += 1;
         d.targetCard = targetCard;
-        d.targetIdx = idx;
+        d.targetIdx = +nearest.dataset.idx;
       }, { passive: false });
 
       function endDrag() {
