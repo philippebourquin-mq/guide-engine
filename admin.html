@@ -307,7 +307,11 @@
           </div>
         </div>
       </div>
-      <p id="item-opt-focus-hint" class="hidden text-[10px] text-gray-400 leading-relaxed">Focus de la photo : cliquer directement sur l'image dans la carte pour la recentrer.</p>
+      <div id="item-opt-focus-wrap" class="hidden">
+        <label class="text-[10px] text-gray-400 block mb-1.5">Focus de la photo</label>
+        <div id="item-opt-focus-preview"
+          style="position:relative;width:132px;height:96px;border-radius:9px;overflow:hidden;background-size:cover;background-position:center;background-color:#f3f4f6;border:1px solid #e5e7eb"></div>
+      </div>
       <button id="item-opt-close" type="button"
         class="w-full py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-md hover:bg-gray-700 transition-colors">
         Fermer
@@ -826,12 +830,47 @@
         btn.style.background = on ? '#111827' : '#f3f4f6'; btn.style.color = on ? '#fff' : '#6b7280';
       });
     }
+    // Grille 3×3 de points de focus, superposée à un aperçu de la photo — plus simple et plus
+    // fiable qu'un clic à coordonnées libres (zones discrètes, pas de calcul de position).
+    const FOCUS_POS = ['top left','top center','top right','center left','center','center right','bottom left','bottom center','bottom right'];
+    function buildFocusGrid() {
+      const preview = document.getElementById('item-opt-focus-preview');
+      preview.innerHTML = '';
+      FOCUS_POS.forEach((pos, i) => {
+        const col = i % 3, row = Math.floor(i / 3);
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.dataset.focusPos = pos; btn.title = pos;
+        btn.style.cssText = `position:absolute;left:${col*33.333}%;top:${row*33.333}%;width:33.333%;height:33.333%;
+          border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center`;
+        btn.innerHTML = '<span style="width:9px;height:9px;border-radius:50%;background:#fff;border:1.5px solid rgba(0,0,0,.35);box-shadow:0 0 0 1.5px rgba(255,255,255,.6);transition:transform .1s"></span>';
+        btn.addEventListener('click', () => {
+          if (!_itemOpt) return;
+          _itemOpt.item.objectPosition = pos;
+          refreshFocusGrid(pos);
+          _itemOpt.onChange('pos');
+        });
+        preview.appendChild(btn);
+      });
+    }
+    function refreshFocusGrid(pos) {
+      document.querySelectorAll('#item-opt-focus-preview [data-focus-pos]').forEach(btn => {
+        const on = btn.dataset.focusPos === pos;
+        const dot = btn.firstElementChild;
+        dot.style.background = on ? '#3b82f6' : '#fff';
+        dot.style.transform = on ? 'scale(1.35)' : 'scale(1)';
+      });
+    }
+    buildFocusGrid();
     function openItemOptions(item, onChange) {
       _itemOpt = { item, onChange };
       document.getElementById('item-opt-url').value = item.url || '';
       const hasPhoto = !!item.photo?.trim();
       document.getElementById('item-opt-textstyle-wrap').classList.toggle('hidden', hasPhoto);
-      document.getElementById('item-opt-focus-hint').classList.toggle('hidden', !hasPhoto);
+      document.getElementById('item-opt-focus-wrap').classList.toggle('hidden', !hasPhoto);
+      if (hasPhoto) {
+        document.getElementById('item-opt-focus-preview').style.backgroundImage = `url("${item.photo}")`;
+        refreshFocusGrid(item.objectPosition || 'center');
+      }
       refreshItemOptTextStyle(item.textStyle || 'editorial');
       document.getElementById('item-options-modal').classList.remove('hidden');
     }
@@ -915,6 +954,7 @@
         e.stopPropagation();
         openItemOptions(item, kind => {
           if (kind === 'textStyle' || kind === 'photo') ctx.rerender();
+          else if (kind === 'pos') { const img = el.querySelector('img'); if (img) img.style.objectPosition = item.objectPosition; }
         });
       });
       el.appendChild(opt);
@@ -926,24 +966,6 @@
         if (l) item.layout = l; else delete item.layout;
         ctx.rerender();
       });
-
-      // Focus de la photo : clic direct sur l'image plutôt qu'un réglage séparé
-      const img = el.querySelector('img');
-      if (img) {
-        // Le calque de dégradé (absolute inset-0, juste après l'image dans le DOM) intercepte
-        // sinon les clics avant qu'ils n'atteignent l'image — le laisser passer.
-        if (img.nextElementSibling) img.nextElementSibling.style.pointerEvents = 'none';
-        img.style.cursor = 'crosshair';
-        img.title = 'Cliquer pour recentrer la photo';
-        img.addEventListener('click', e => {
-          e.stopPropagation();
-          const r = img.getBoundingClientRect();
-          const x = Math.round(((e.clientX - r.left) / r.width) * 100);
-          const y = Math.round(((e.clientY - r.top) / r.height) * 100);
-          item.objectPosition = `${Math.max(0, Math.min(100, x))}% ${Math.max(0, Math.min(100, y))}%`;
-          img.style.objectPosition = item.objectPosition;
-        });
-      }
     }
 
     /* ── Section album — rendu miroir (réutilise GuideEngine) ──────── */
