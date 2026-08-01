@@ -123,7 +123,7 @@
     const rows = m ? +m[1] : 1;   // premier chiffre = rangées
     const cols = m ? +m[2] : 1;   // second chiffre  = colonnes
     const colCls  = cols === 3 ? 'block-col-full' : cols === 2 ? 'block-col-2' : '';
-    const rowCls  = rows === 2 ? 'block-row-2' : '';
+    const rowCls  = rows === 3 ? 'block-row-3' : rows === 2 ? 'block-row-2' : '';
     const sizeCls = [colCls, rowCls].filter(Boolean).join(' ');
 
     /* ── Carte avec photo ── */
@@ -346,40 +346,36 @@
     _favSave(favs);
   }
 
+  // Grille fixe 3 colonnes, identique aux sections classiques (mode mixte) : chaque photo
+  // occupe une taille NxM réelle (block-col-2/full, block-row-2/3) au lieu d'une largeur
+  // fractionnaire dépendant d'un pattern — la taille affichée correspond toujours exactement
+  // au format choisi, et reste redimensionnable dans les deux sens sans cas particulier.
   function renderAlbumSection(section) {
     const photos = section.photos || [];
     if (!photos.length) {
       return `<div style="padding:52px 0;text-align:center;color:#a8a29e;font-size:13px;font-style:italic">Album vide</div>`;
     }
     const pData = JSON.stringify(photos.map((p, i) => ({ i, src:p.src, caption:p.caption||'' })));
-    const groups = _albumGroups(photos);
     const favs = _favSet();
-    let idx = 0;
+    const g = 'var(--sec-gap)';
 
-    const groupsHtml = groups.map(({ p, slice }) => {
-      const cells = slice.map((photo, ci) => {
-        const i = idx++;
-        const fk = _photoHash(photo.src);
-        const span = (p.bigFirst && ci === 0) || (p.bigLast && ci === slice.length - 1)
-          ? ' style="grid-row:span 2"' : '';
-        return `<div class="album-cell" data-idx="${i}" onclick="openLightbox(this)"${span}>
-          <img src="${esc(photo.src)}" alt="${esc(photo.caption||'')}" loading="lazy" />
-          <span class="album-star${favs.has(fk)?' is-fav':''}" data-fk="${fk}" onclick="toggleFav(this,event)">★</span>
-        </div>`;
-      }).join('');
-
-      const g = 'var(--alb-gap)';
-      const style = p.rows === 2
-        ? `display:grid;grid-template-columns:${p.grid};grid-template-rows:1fr 1fr;gap:${g};height:${p.h}`
-        : p.grid
-          ? `display:grid;grid-template-columns:${p.grid};gap:${g};height:${p.h}`
-          : `display:grid;grid-template-columns:1fr;height:${p.h}`; /* solo : grid 1col = album-cell hérite bien de la hauteur */
-
-      return `<div style="${style}">${cells}</div>`;
+    const cellsHtml = photos.map((photo, i) => {
+      const fk = _photoHash(photo.src);
+      const layoutKey = photo.layout || '1x1';
+      const m = layoutKey.match(/^(\d)x(\d)$/);
+      const rows = m ? +m[1] : 1;
+      const cols = m ? +m[2] : 1;
+      const colCls = cols === 3 ? 'block-col-full' : cols === 2 ? 'block-col-2' : '';
+      const rowCls = rows === 3 ? 'block-row-3' : rows === 2 ? 'block-row-2' : '';
+      const sizeCls = [colCls, rowCls].filter(Boolean).join(' ');
+      return `<div class="album-cell ${sizeCls}" data-idx="${i}" onclick="openLightbox(this)">
+        <img src="${esc(photo.src)}" alt="${esc(photo.caption||'')}" loading="lazy" />
+        <span class="album-star${favs.has(fk)?' is-fav':''}" data-fk="${fk}" onclick="toggleFav(this,event)">★</span>
+      </div>`;
     }).join('');
 
     return `<div class="album-section" data-album-photos="${esc(pData)}"
-      style="display:flex;flex-direction:column;gap:var(--alb-gap)">${groupsHtml}</div>`;
+      style="display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(220px,auto);gap:${g}">${cellsHtml}</div>`;
   }
 
   /* ── Lightbox ────────────────────────────────────────────────── */

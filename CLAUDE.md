@@ -56,48 +56,59 @@ stored && (stored._ts || 0) >= (fetched._ts || 0)
 
 Cette protection est **entièrement locale à chaque destination** (son propre localStorage vs son propre fetch) — elle ne dépend pas de l'origine de l'admin, même si l'admin est hébergé ailleurs (ce qui est le cas ici : admin sur `guide-engine`, contenu servi sur le repo de chaque destination). localStorage étant scopé par origine, l'admin ne peut de toute façon pas écrire dans le localStorage d'une destination — leur synchronisation passe uniquement par GitHub (`data.json` + `_ts`).
 
-## Patterns album
+## Patterns album (cycling) — sections classiques « tout auto » uniquement
 
-`_ALB_PAT` : 12 patterns cyclés (duo / trio / quad / portrait vertical, style Cheerz/Lalalab).
-`_CLS_PAT` : `_ALB_PAT` filtré sans `bigFirst`/`bigLast` (sections classiques — CSS incompatible avec ces variantes).
+`_ALB_PAT` : 12 patterns cyclés (duo / trio / quad / portrait vertical, style Cheerz/Lalalab). Utilisé **uniquement** par `renderClassicSection` pour les sections classiques entièrement auto (voir plus bas) — `renderAlbumSection` ne l'utilise plus du tout depuis l'unification des tailles (voir « Album — grille fixe »).
+
+`_CLS_PAT` : `_ALB_PAT` filtré sans `bigFirst`/`bigLast` (CSS incompatible avec le mode mixte).
 
 Fallbacks indépendants du tableau (résistants aux réordres) :
-- `_PAT_SOLO` — 1 photo pleine largeur
-- `_PAT_DUO`  — 2 photos égales
-- `_PAT_TRIO` — 3 photos égales
+- `_PAT_SOLO` — 1 item pleine largeur
+- `_PAT_DUO`  — 2 items égaux
+- `_PAT_TRIO` — 3 items égaux
 
 **Ne jamais référencer `_ALB_PAT[i]` par indice hardcodé** — utiliser ces constantes.
 
-### `_albSz(photo)` — catégories de layout forcé
+### `_albSz(item)` — catégories de layout forcé (cycling classique uniquement)
 
-| `photo.layout` | Catégorie | Comportement |
+| `item.layout` | Catégorie | Comportement |
 |----------------|-----------|--------------|
 | `null`, `'1x1'`, `'default'` | `null` (auto) | Intégré dans le cycle |
 | `'1x3'`, `'2x3'` | `'solo'` | Pleine largeur isolé |
 | `'2x1'` | `'tall'` | Portrait vertical, groupé avec 1–2 autos suivantes |
 | `'1x2'`, `'2x2'` | `'large'` | Grand format, groupé avec 1 auto suivante |
 
+N'entre en jeu que dans `_albumGroups`, donc uniquement pour les sections classiques « tout auto » — jamais pour l'album (grille fixe, pas de catégorisation).
+
 ### Anti-orphelin (look-ahead)
 
-Si prendre `n` photos laisserait exactement 1 orphelin : ajuster `n` (élargir si ≤3, rétrécir sinon).
+Si prendre `n` items laisserait exactement 1 orphelin : ajuster `n` (élargir si ≤3, rétrécir sinon).
 
 ### Auto isolé avant un bloc forcé
 
-Une photo auto seule dans son run (`remAuto === 1`) juste avant un bloc `'large'` (1x2/2x2) est regroupée avec lui en duo `3fr 5fr` plutôt que forcée en solo pleine largeur. Sans photo `'large'` suivante (fin de section, ou suivante `'tall'`/`'solo'`), le solo reste inévitable — c'est la seule option sensée. Sans cette règle, une telle photo n'a aucun format plus petit vers lequel la redimensionner depuis l'admin (`auto`/`1x1` est déjà le plancher).
+Un item auto seul dans son run (`remAuto === 1`) juste avant un bloc `'large'` (1x2/2x2) est regroupé avec lui en duo `3fr 5fr` plutôt que forcé en solo pleine largeur. Sans item `'large'` suivant (fin de section, ou suivant `'tall'`/`'solo'`), le solo reste inévitable — c'est la seule option sensée.
 
 ## Sections
 
 ### Types
 
-- `classic` — blocs texte/photo avec layout CSS grid (`block-col-2`, `block-row-2`)
-- `album`   — galerie photo avec patterns Cheerz/Lalalab
+- `classic` — blocs texte/photo, deux modes (voir ci-dessous)
+- `album`   — galerie photo, grille fixe (voir « Album — grille fixe »)
 
 ### Rendu classique hybride (`renderClassicSection`)
 
-- Section **tout auto** (`layout` absent ou `1x1`) → cycling album avec `_CLS_PAT`
-- Section **mixte** (au moins un layout forcé) → CSS grid `repeat(3,1fr)` natif
+- Section **tout auto** (`layout` absent ou `1x1`) → cycling avec `_CLS_PAT` (fractionnaire, tailles variables selon le pattern)
+- Section **mixte** (au moins un layout forcé) → CSS grid `repeat(3,1fr)` natif, tailles NxM réelles
 
-Les classes `block-col-2` (span 2 colonnes) et `block-row-2` (span 2 rangées) ne fonctionnent qu'en mode mixte (grid natif).
+Les classes `block-col-2` (span 2 colonnes), `block-col-full` (pleine largeur), `block-row-2`/`block-row-3` (span 2/3 rangées) ne fonctionnent qu'en mode mixte (grid natif) — pas en mode cycling.
+
+## Album — grille fixe (identique au mode mixte classique)
+
+`renderAlbumSection` n'utilise **plus** de cycling/patterns fractionnaires (`_albumGroups`/`_ALB_PAT`) — chaque photo est placée directement dans une grille `repeat(3,1fr)` à `grid-auto-rows:minmax(220px,auto)`, avec les mêmes classes `block-col-2`/`block-col-full`/`block-row-2`/`block-row-3` que les blocs classiques en mode mixte. Une photo `auto` (pas de `layout`) occupe toujours exactement 1×1 — jamais de taille surprise dépendant de sa position dans la séquence.
+
+**Pourquoi ce changement** (vs. l'ancien système à patterns) : une photo auto pouvait se retrouver seule dans son groupe et être rendue en plein format (bien plus grande que les autres), sans qu'on puisse la redimensionner depuis l'admin — `auto`/`1x1` étant déjà le format le plus petit du système, rien de plus petit où « rétrécir ». La grille fixe élimine complètement ce cas : la taille affichée correspond toujours exactement au format NxM choisi, dans les deux sens (agrandir/rétrécir), sans exception.
+
+`_albumGroups`/`_ALB_PAT`/`_albSz` restent utilisés par les sections **classiques tout auto** (cycling, toujours en place) — seul l'album a changé.
 
 ## Admin — comptes et destinations
 
@@ -123,7 +134,7 @@ Le repo `guide-site-template` doit être marqué **Template repository** dans se
 
 ## Format des photos/blocs
 
-6 formats possibles pour les photos album ET les blocs classiques : `1x1` / `1x2` / `1x3` / `2x1` / `2x2` / `2x3` (rangées × colonnes). `1x1` = pas de `layout` sur l'objet (supprimé/vide). Se règlent par **redimensionnement direct** (voir ci-dessous), pas par picker.
+7 formats possibles, partagés par les photos album ET les blocs classiques : `1x1` / `1x2` / `1x3` / `2x1` / `2x2` / `2x3` / `3x3` (rangées × colonnes, grille 3 colonnes max). `3x3` = pleine largeur, 3 rangées de haut — le plus grand format, ajouté pour un usage « héros ». `1x1` = pas de `layout` sur l'objet (supprimé/vide). Se règlent par **redimensionnement direct** (voir ci-dessous), pas par picker — `attachResize` clampe `cols` à [1,3] et `rows` à [1,3].
 
 ## Admin — éditeur miroir (WYSIWYG)
 
@@ -136,19 +147,19 @@ Le repo `guide-site-template` doit être marqué **Template repository** dans se
 - Chaque carte de section expose `card._rerender()` : réinjecte le HTML via `classicMirrorHtml()`/`GuideEngine.renderAlbumSection()` à partir du tableau, puis redécore. Appelé après tout ajout/suppression/déplacement/redimensionnement.
 - `collectData()` lit `card._items`/`card._albumPhotos` directement (plus de lecture du DOM pour les champs).
 
-### Mode « Modifier »
+### Un seul mode — pas de bascule « Modifier »
 
-Bouton dans le header (`#edit-mode-btn`) bascule la classe `admin-edit-on` sur `#sections-container`. Hors de ce mode, la zone est un pur miroir + le texte reste éditable au tap (non destructif). En mode Modifier apparaissent : poignée de drag (coin haut-gauche), badge suppression (haut-droite, rouge), badge photo (bas-gauche), badge options (haut-centre, sections classiques uniquement), poignée de redimensionnement (bas-droite), et une tuile « + » en fin de grille pour ajouter.
+Tout est éditable/déplaçable/redimensionnable en permanence (déjà derrière le login admin — pas besoin d'un mode séparé). Chaque bloc/photo décoré porte 4 badges discrets aux coins (icône seule + ombre portée, pas de pastille pleine — voir `.admin-handle` dans le CSS) : drag (haut-gauche), suppression (haut-droite), options ou photo (bas-gauche — options pour les blocs classiques avec photo/lien/style, photo directe pour l'album), redimensionnement (bas-droite). Une tuile « + » ronde et discrète en fin de grille permet d'ajouter.
 
 ### Édition inline
 
-- Titre (`h3`) et texte (`p`) rendus par `renderItem()` sont rendus `contenteditable` directement dans `decorateClassicItem()` — pas de re-rendu à chaque frappe, juste mise à jour de `item.title`/`item.text` sur l'event `input`.
+- Titre et texte rendus par `renderItem()` sont rendus `contenteditable` dans `decorateClassicItem()` — pas de re-rendu à chaque frappe, juste mise à jour de `item.title`/`item.text` sur l'event `input`. Chaque style de texte range titre/texte dans des éléments DOM différents (h3+p pour la plupart, `.font-black` pour `stat`, deux `<p>` pour `rubrique`/`pullquote`) — `getTitleTextNodes(el, item)` localise le bon nœud par style, pour ne jamais écrire dans le mauvais champ. Un caractère U+200B factice (`withTitlePlaceholder`) force le rendu de l'élément titre même quand `item.title` est vide, pour qu'il reste toujours cliquable. Pour `pullquote`, le préfixe « — » devant l'auteur est retiré automatiquement à la sauvegarde (`dashPrefix`).
 - Légende de photo d'album : même principe, `div contenteditable` superposé en bas de la vignette (`decorateAlbumCell()`).
-- Style de texte (`pullquote` n'a pas de `<h3>` — cas non couvert par l'édition inline du titre pour ce style précis), lien (URL) et focus de photo (`objectPosition`) : pas d'équivalent visuel direct sur la carte → modale légère `#item-options-modal` (badge « options »), plutôt qu'un vrai contrôle inline.
+- Lien (URL), style de texte et focus de photo (`objectPosition`) : pas d'équivalent visuel direct sur la carte → modale légère `#item-options-modal` (badge « options »). Le focus se choisit sur une grille 3×3 de points superposée à un aperçu de la vraie photo (pas de clic à coordonnées libres sur la carte — testé peu fiable).
 
 ### Redimensionnement (drag du coin)
 
-`attachResize(handle, getEl, getRowsCols, onCommit)` — mesure la taille actuellement rendue du bloc comme unité (1 colonne = largeur/cols actuelles, 1 rangée = hauteur/rows actuelles), affiche un contour de snap (`.admin-resize-ghost`) pendant le drag, commit au relâchement (`item.layout` mis à jour, puis `rerender()`). Un item qui passe de `1x1` à un format forcé peut faire basculer toute la section « tout auto » vers le mode grille mixte (comportement natif de `renderClassicSection`, inchangé).
+`attachResize(handle, getEl, getRowsCols, onCommit)` — mesure la taille actuellement rendue du bloc comme unité (1 colonne = largeur/cols actuelles, 1 rangée = hauteur/rows actuelles), affiche un contour de snap (`.admin-resize-ghost`) pendant le drag, commit au relâchement (`item.layout` mis à jour, puis `rerender()`). Clampe `cols` à [1,3] et `rows` à [1,3] (7 formats, voir « Format des photos/blocs »). Pour une section classique, un item qui passe de `1x1` à un format forcé peut faire basculer toute la section « tout auto » vers le mode grille mixte (comportement natif de `renderClassicSection`, inchangé) — l'album n'a plus ce cas de figure, sa grille est toujours fixe.
 
 ### Réordonnancement (drag & drop)
 

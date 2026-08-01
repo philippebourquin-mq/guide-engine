@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="engine.css?v=20260801" />
+  <link rel="stylesheet" href="engine.css?v=20260801b" />
   <style>
     body { font-family: 'Poppins', system-ui, sans-serif; }
     textarea { field-sizing: content; }
@@ -455,7 +455,7 @@
     </div>
   </div>
 
-  <script src="engine.js?v=20260801"></script>
+  <script src="engine.js?v=20260801b"></script>
   <script>
     const ACCOUNT_KEY = 'mtq-gh-account';  // { password, token, unsplashKey }
     const SITES_KEY   = 'mtq-gh-sites';    // [{ id, label, owner, repo }, …]
@@ -762,7 +762,7 @@
         function move(ev) {
           const dx = ev.clientX - startX, dy = ev.clientY - startY;
           cols = Math.min(3, Math.max(1, Math.round(startCols + dx / colUnit)));
-          rows = Math.min(2, Math.max(1, Math.round(startRows + dy / rowUnit)));
+          rows = Math.min(3, Math.max(1, Math.round(startRows + dy / rowUnit)));
           ghost.style.width  = (colUnit * cols) + 'px';
           ghost.style.height = (rowUnit * rows) + 'px';
         }

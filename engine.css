@@ -39,18 +39,7 @@ body { background: #e8e4df; font-family: 'Poppins', system-ui, sans-serif; }
 :root { --sec-gap: 12px; }
 @media (min-width: 768px) { :root { --sec-gap: 16px; } }
 
-/* ── Album — groupes alternants ────────────────────────── */
-.album-section {
-  --alb-gap: var(--sec-gap);
-  --alb-h1: 380px;   /* solo panorama */
-  --alb-h2: 280px;   /* duo / big-left / big-right */
-  --alb-h3: 220px;   /* triptyque  (= grid-auto-rows base) */
-  --alb-h4: 572px;   /* quad 2×2   (280×2 + 12) */
-}
-@media (min-width: 768px) { .album-section { --alb-gap: 16px; } }
-@media (max-width: 639px) {
-  .album-section { --alb-h1:220px; --alb-h2:160px; --alb-h3:130px; --alb-h4:332px; }
-}
+/* ── Album — grille fixe (identique aux sections classiques) ───── */
 .album-cell {
   overflow: hidden;
   border-radius: 12px;
