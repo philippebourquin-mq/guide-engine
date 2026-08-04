@@ -137,7 +137,7 @@ Le repo `guide-site-template` doit être marqué **Template repository** dans se
 Contrairement à `engine.js`/`engine.css` (partagés, un seul exemplaire dans `guide-engine`), **chaque destination héberge son propre `favicon.svg` / `favicon-32.png` / `apple-touch-icon.png` à la racine de son dépôt** — c'est la seule façon d'avoir une couleur différente par site sans backend (un favicon est un fichier statique, pas un endpoint paramétrable). `index.html` de chaque destination référence ces fichiers en **chemin relatif** (`./favicon.svg`, etc.), jamais via l'URL `guide-engine`.
 
 `admin.html` génère ces fichiers à la volée en JS (pas de génération manuelle) :
-- `FAVICON_PALETTE` — 8 teintes sobres (sable, sauge, bleu poussière, terracotta, argile rose, olive, bleu nuit, prune), volontairement sans le noir utilisé par l'icône de l'admin (voir plus bas).
+- `FAVICON_PALETTE` — 16 teintes sobres (sable, sauge, bleu poussière, terracotta, argile rose, olive, bleu nuit, prune, moutarde douce, eucalyptus, ardoise, rouille, lavande grisée, vert bouteille, bordeaux doux, café taupe), volontairement sans le noir utilisé par l'icône de l'admin (voir plus bas).
 - `faviconFgFor(bgHex)` — calcule la luminance relative du fond et choisit un trait sombre (`#211d1a`) ou clair (`#f4efe6`) pour rester lisible, quelle que soit la couleur.
 - `faviconSvgFor(bgHex)` — construit le SVG (même mark boussole que l'admin) en interpolant fond + trait.
 - `svgToPngDataUrl(svg, size)` — rasterise via `<canvas>` (Image + `drawImage` + `toDataURL`), pour produire les tailles PNG (180 = apple-touch-icon, 32 = favicon PNG de repli).
@@ -147,7 +147,7 @@ Dans la modale « Nouvelle destination », un nuancier (`FAVICON_PALETTE`) perme
 
 **L'icône de l'admin** (`admin.html` lui-même) est un cas à part, fixe : fond noir/anthracite (`favicon-admin.svg` + PNG, fichiers statiques dans `guide-engine`, pas générés dynamiquement) — volontairement distincte de toutes les couleurs de destination pour repérer l'onglet admin d'un coup d'œil.
 
-**Changer la couleur d'une destination déjà créée** : pas d'UI dédiée pour l'instant — retirer puis ré-ajouter la destination (« Enregistrer un dépôt existant », même owner/repo) avec une autre couleur dans le nuancier, ou appeler `publishFaviconToSite` manuellement depuis la console.
+**Changer la couleur d'une destination déjà créée** : dans la liste « Destinations enregistrées » (modale « Nouvelle destination »), chaque ligne a un petit rond de couleur cliquable (`data-recolor`) — clic → déplie le nuancier complet sous la ligne (`_recolorSiteId` piloté par `renderSitesList()`), clic sur une teinte → `changeSiteColor(siteId, color)` met à jour `color` dans `mtq-gh-sites`, republie les fichiers via `publishFaviconToSite`, puis replie le nuancier.
 
 ## Format des photos/blocs
 

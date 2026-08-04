@@ -664,14 +664,22 @@
        couleur différente par site sans backend. Le SVG est généré ici en JS à partir
        de la couleur choisie, puis rasterisé via <canvas> pour les tailles PNG. */
     const FAVICON_PALETTE = [
-      { name: 'Sable',           bg: '#e8e4df' },
-      { name: 'Sauge',           bg: '#b7c2ab' },
-      { name: 'Bleu poussière',  bg: '#9fb6c6' },
-      { name: 'Terracotta',      bg: '#cf9a78' },
-      { name: 'Argile rose',     bg: '#cfa8a4' },
-      { name: 'Olive',           bg: '#adad7e' },
-      { name: 'Bleu nuit',       bg: '#54677a' },
-      { name: 'Prune',           bg: '#8c7a8c' },
+      { name: 'Sable',            bg: '#e8e4df' },
+      { name: 'Sauge',            bg: '#b7c2ab' },
+      { name: 'Bleu poussière',   bg: '#9fb6c6' },
+      { name: 'Terracotta',       bg: '#cf9a78' },
+      { name: 'Argile rose',      bg: '#cfa8a4' },
+      { name: 'Olive',            bg: '#adad7e' },
+      { name: 'Bleu nuit',        bg: '#54677a' },
+      { name: 'Prune',            bg: '#8c7a8c' },
+      { name: 'Moutarde douce',   bg: '#c9a35a' },
+      { name: 'Eucalyptus',       bg: '#9cb3a3' },
+      { name: 'Ardoise',          bg: '#7c8a94' },
+      { name: 'Rouille',          bg: '#b06a4a' },
+      { name: 'Lavande grisée',   bg: '#a599b5' },
+      { name: 'Vert bouteille',   bg: '#5f7a68' },
+      { name: 'Bordeaux doux',    bg: '#8a5a5a' },
+      { name: 'Café taupe',       bg: '#6b5a4e' },
     ];
     function faviconFgFor(hexBg) {
       const h = hexBg.replace('#', '');
@@ -1902,13 +1910,44 @@
     });
     document.getElementById('site-add-btn').addEventListener('click', openSitesModal);
 
+    let _recolorSiteId = null;
+    async function changeSiteColor(siteId, color) {
+      const sites = loadSites();
+      const site = sites.find(s => s.id === siteId);
+      if (!site) return;
+      site.color = color;
+      saveSites(sites);
+      _recolorSiteId = null;
+      renderSitesList();
+      const token = loadConfig()?.token;
+      if (token) {
+        try { await publishFaviconToSite(token, site.owner, site.repo, color); showToast('Icône mise à jour', false); }
+        catch { showToast('Icône : publication échouée', true); }
+      }
+      try { await publishAccountBlob(); } catch {}
+    }
     function renderSitesList() {
       const sites = loadSites();
-      document.getElementById('sites-list').innerHTML = sites.map(s => `
-        <div class="flex items-center justify-between text-xs px-3 py-2 rounded-md bg-gray-50">
-          <span class="text-gray-700 truncate">${esc(s.label)} <span class="text-gray-400">— ${esc(s.owner)}/${esc(s.repo)}</span></span>
-          <button type="button" data-remove-site="${esc(s.id)}" class="text-gray-300 hover:text-red-500 shrink-0 ml-2">✕</button>
-        </div>`).join('') || '<p class="text-xs text-gray-400">Aucune destination enregistrée.</p>';
+      document.getElementById('sites-list').innerHTML = sites.map(s => {
+        const color = s.color || FAVICON_PALETTE[0].bg;
+        const expanded = _recolorSiteId === s.id;
+        return `
+        <div class="rounded-md bg-gray-50">
+          <div class="flex items-center justify-between text-xs px-3 py-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <button type="button" data-recolor="${esc(s.id)}" title="Changer la couleur de l'icône"
+                class="w-4 h-4 rounded-full border border-black/10 shrink-0" style="background:${esc(color)}"></button>
+              <span class="text-gray-700 truncate">${esc(s.label)} <span class="text-gray-400">— ${esc(s.owner)}/${esc(s.repo)}</span></span>
+            </div>
+            <button type="button" data-remove-site="${esc(s.id)}" class="text-gray-300 hover:text-red-500 shrink-0 ml-2">✕</button>
+          </div>
+          ${expanded ? `<div class="flex flex-wrap gap-2 px-3 pb-2.5" data-recolor-swatches="${esc(s.id)}">${
+            FAVICON_PALETTE.map(c => `<button type="button" data-recolor-pick="${c.bg}" title="${esc(c.name)}"
+              class="w-6 h-6 rounded-full border-2 ${c.bg === color ? 'border-gray-900' : 'border-transparent'}"
+              style="background:${c.bg}"></button>`).join('')
+          }</div>` : ''}
+        </div>`;
+      }).join('') || '<p class="text-xs text-gray-400">Aucune destination enregistrée.</p>';
       document.querySelectorAll('[data-remove-site]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = btn.dataset.removeSite;
@@ -1917,6 +1956,19 @@
           if (getActiveSiteId() === id) setActiveSiteId(remaining[0]?.id || '');
           renderSitesList(); renderSiteSelect();
           if (remaining.length && getActiveSiteId()) initAdmin();
+        });
+      });
+      document.querySelectorAll('[data-recolor]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.recolor;
+          _recolorSiteId = _recolorSiteId === id ? null : id;
+          renderSitesList();
+        });
+      });
+      document.querySelectorAll('[data-recolor-pick]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.closest('[data-recolor-swatches]').dataset.recolorSwatches;
+          changeSiteColor(id, btn.dataset.recolorPick);
         });
       });
     }
