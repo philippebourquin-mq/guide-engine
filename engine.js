@@ -357,7 +357,6 @@
     }
     const pData = JSON.stringify(photos.map((p, i) => ({ i, src:p.src, caption:p.caption||'' })));
     const favs = _favSet();
-    const g = 'var(--sec-gap)';
 
     const cellsHtml = photos.map((photo, i) => {
       const fk = _photoHash(photo.src);
@@ -374,8 +373,7 @@
       </div>`;
     }).join('');
 
-    return `<div class="album-section" data-album-photos="${esc(pData)}"
-      style="display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(220px,auto);gap:${g}">${cellsHtml}</div>`;
+    return `<div class="album-section guide-grid-3" data-album-photos="${esc(pData)}">${cellsHtml}</div>`;
   }
 
   /* ── Lightbox ────────────────────────────────────────────────── */
@@ -461,7 +459,6 @@
   function renderClassicSection(section) {
     const items = (section.items || []).filter(i => i.text?.trim() || i.photo?.trim());
     if (!items.length) return '';
-    const g = 'var(--sec-gap)';
 
     function lyAuto(it) { const l = it.layout || '1x1'; return !l || l === '1x1' || l === 'default'; }
 
@@ -473,15 +470,15 @@
       const rows = [];
       _albumGroups(items, _CLS_PAT).forEach(({ p, slice }) => {
         const cols = p.grid || '1fr';
-        rows.push(`<div style="display:grid;grid-template-columns:${cols};grid-auto-rows:minmax(220px,auto);gap:${g}">${
+        rows.push(`<div class="cyc-row" style="--cyc-cols:${cols}">${
           slice.map(it => renderItem({...it, layout:'1x1'})).join('')
         }</div>`);
       });
-      return `<div style="display:flex;flex-direction:column;gap:${g}">${rows.join('')}</div>`;
+      return `<div class="cyc-stack">${rows.join('')}</div>`;
     }
 
     // Grille 3-col : block-col-2 = 2/3 larg, block-col-full = pleine larg, block-row-2 = tall
-    return `<div style="display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(220px,auto);gap:${g}">${
+    return `<div class="guide-grid-3">${
       items.map(it => renderItem(it)).join('')
     }</div>`;
   }

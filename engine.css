@@ -32,12 +32,36 @@ body { background: #e8e4df; font-family: 'Poppins', system-ui, sans-serif; }
 .block-col-full{ grid-column: 1 / -1; }
 .block-row-2   { grid-row: span 2; }
 .block-row-3   { grid-row: span 3; }
-@media (max-width: 639px) {
-  .block-col-2 { grid-column: span 1; }
-}
 
 :root { --sec-gap: 12px; }
 @media (min-width: 768px) { :root { --sec-gap: 16px; } }
+
+/* Grilles de contenu (sections classiques + album) — colonnes fixées en JS via classe
+   plutôt que style inline, pour que la media query mobile puisse les repasser à 1 colonne. */
+.guide-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: minmax(220px, auto);
+  gap: var(--sec-gap);
+}
+.cyc-row {
+  display: grid;
+  grid-template-columns: var(--cyc-cols, 1fr);
+  grid-auto-rows: minmax(220px, auto);
+  gap: var(--sec-gap);
+}
+.cyc-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sec-gap);
+}
+@media (max-width: 639px) {
+  .block-col-2 { grid-column: span 1; }
+  .guide-grid-3,
+  .cyc-row {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* ── Album — grille fixe (identique aux sections classiques) ───── */
 .album-cell {
