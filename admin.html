@@ -239,6 +239,10 @@
           <input id="site-repo" type="text" autocapitalize="none" autocorrect="off"
             class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white font-mono" />
         </div>
+        <div>
+          <label class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 block mb-2">Couleur de l'icône</label>
+          <div id="site-color-swatches" class="flex flex-wrap gap-2.5"></div>
+        </div>
         <div id="site-error" class="hidden text-xs text-red-500 bg-red-50 rounded-md px-4 py-3"></div>
         <div class="flex flex-col gap-2 pt-1">
           <button id="site-create-btn" type="button"
@@ -652,6 +656,76 @@
       const blob = await resp.json();
       try { return { status: 'ok', data: await decryptAccountBlob(password, blob) }; }
       catch { return { status: 'bad-password' }; }
+    }
+
+    /* ── Icône par destination (favicon coloré, propre à chaque dépôt) ──
+       Chaque destination héberge son propre favicon.svg/-32.png/apple-touch-icon.png
+       (contrairement à engine.js/css qui restent partagés) — seule façon d'avoir une
+       couleur différente par site sans backend. Le SVG est généré ici en JS à partir
+       de la couleur choisie, puis rasterisé via <canvas> pour les tailles PNG. */
+    const FAVICON_PALETTE = [
+      { name: 'Sable',           bg: '#e8e4df' },
+      { name: 'Sauge',           bg: '#b7c2ab' },
+      { name: 'Bleu poussière',  bg: '#9fb6c6' },
+      { name: 'Terracotta',      bg: '#cf9a78' },
+      { name: 'Argile rose',     bg: '#cfa8a4' },
+      { name: 'Olive',           bg: '#adad7e' },
+      { name: 'Bleu nuit',       bg: '#54677a' },
+      { name: 'Prune',           bg: '#8c7a8c' },
+    ];
+    function faviconFgFor(hexBg) {
+      const h = hexBg.replace('#', '');
+      const [r, g, b] = [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16) / 255);
+      const lin = c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+      return L > 0.45 ? '#211d1a' : '#f4efe6';
+    }
+    function faviconSvgFor(bgHex) {
+      const fg = faviconFgFor(bgHex);
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="${bgHex}"/>
+  <circle cx="256" cy="256" r="128" fill="none" stroke="${fg}" stroke-width="12" opacity="0.92"/>
+  <g stroke="${fg}" stroke-width="10" stroke-linecap="round" opacity="0.5">
+    <line x1="256" y1="96" x2="256" y2="120"/>
+    <line x1="256" y1="392" x2="256" y2="416"/>
+    <line x1="96" y1="256" x2="120" y2="256"/>
+    <line x1="392" y1="256" x2="416" y2="256"/>
+  </g>
+  <path d="M256 158 L286 256 L256 270 L226 256 Z" fill="${fg}"/>
+  <path d="M256 354 L282 256 L256 244 L230 256 Z" fill="${fg}" opacity="0.4"/>
+  <circle cx="256" cy="256" r="13" fill="${bgHex}" stroke="${fg}" stroke-width="6"/>
+</svg>`;
+    }
+    function svgToPngDataUrl(svgText, size) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const blob = new Blob([svgText], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        img.onload = () => {
+          const c = document.createElement('canvas'); c.width = size; c.height = size;
+          c.getContext('2d').drawImage(img, 0, 0, size, size);
+          URL.revokeObjectURL(url);
+          resolve(c.toDataURL('image/png'));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Rendu SVG impossible')); };
+        img.src = url;
+      });
+    }
+    // Génère et publie favicon.svg/-32.png/apple-touch-icon.png dans le dépôt de la destination.
+    async function publishFaviconToSite(token, owner, repo, bgHex) {
+      const svg = faviconSvgFor(bgHex);
+      const [png180, png32] = await Promise.all([svgToPngDataUrl(svg, 180), svgToPngDataUrl(svg, 32)]);
+      const files = [
+        { path: 'favicon.svg', content: toBase64(svg) },
+        { path: 'apple-touch-icon.png', content: png180.split(',')[1] },
+        { path: 'favicon-32.png', content: png32.split(',')[1] },
+      ];
+      for (const f of files) {
+        const existing = await ghContentsFetch(owner, repo, f.path, token, 'GET');
+        const body = { message: 'Icône du site', content: f.content };
+        if (existing) body.sha = existing.sha;
+        await ghContentsFetch(owner, repo, f.path, token, 'PUT', body);
+      }
     }
 
     /* ── Créer un dépôt de destination depuis le template ─────────── */
@@ -1847,12 +1921,32 @@
       });
     }
     function slugify(s) { return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'destination'; }
+    let _selectedSiteColor = FAVICON_PALETTE[0].bg;
+    function suggestSiteColor() {
+      const used = new Set(loadSites().map(s => s.color).filter(Boolean));
+      const free = FAVICON_PALETTE.find(c => !used.has(c.bg));
+      return (free || FAVICON_PALETTE[0]).bg;
+    }
+    function renderColorSwatches() {
+      const wrap = document.getElementById('site-color-swatches');
+      wrap.innerHTML = FAVICON_PALETTE.map(c => `
+        <button type="button" data-color="${c.bg}" title="${c.name}" aria-label="${c.name}"
+          class="w-8 h-8 rounded-full border-2 transition-transform ${c.bg === _selectedSiteColor ? 'border-gray-900 scale-110' : 'border-transparent'}"
+          style="background:${c.bg}"></button>
+      `).join('');
+      wrap.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+        _selectedSiteColor = b.dataset.color;
+        renderColorSwatches();
+      }));
+    }
     function openSitesModal() {
       document.getElementById('site-label').value = '';
       const active = getActiveSite();
       document.getElementById('site-owner').value = active?.owner || '';
       document.getElementById('site-repo').value  = '';
       document.getElementById('site-error').classList.add('hidden');
+      _selectedSiteColor = suggestSiteColor();
+      renderColorSwatches();
       renderSitesList();
       document.getElementById('sites-modal').classList.remove('hidden');
     }
@@ -1863,13 +1957,18 @@
     });
     document.getElementById('site-repo').addEventListener('input', () => { document.getElementById('site-repo')._touched = true; });
 
-    async function addSiteToList(label, owner, repo) {
+    async function addSiteToList(label, owner, repo, color) {
       const id = 'site-' + Date.now();
-      const sites = loadSites(); sites.push({ id, label, owner, repo }); saveSites(sites);
+      const sites = loadSites(); sites.push({ id, label, owner, repo, color }); saveSites(sites);
       setActiveSiteId(id);
       document.getElementById('sites-modal').classList.add('hidden');
       renderSiteSelect();
       initAdmin();
+      const token = loadConfig()?.token;
+      if (token && color) {
+        try { await publishFaviconToSite(token, owner, repo, color); }
+        catch { showToast('Icône du site : publication échouée', true); }
+      }
       try { await publishAccountBlob(); } catch { showToast('Sync multi-appareil échouée', true); }
     }
     document.getElementById('site-register-btn').addEventListener('click', () => {
@@ -1879,7 +1978,7 @@
       const errEl = document.getElementById('site-error');
       errEl.classList.add('hidden');
       if (!label || !owner || !repo) { errEl.textContent = 'Tous les champs sont requis.'; errEl.classList.remove('hidden'); return; }
-      addSiteToList(label, owner, repo);
+      addSiteToList(label, owner, repo, _selectedSiteColor);
     });
     document.getElementById('site-create-btn').addEventListener('click', async () => {
       const label = document.getElementById('site-label').value.trim();
@@ -1896,7 +1995,7 @@
         // Laisse GitHub finaliser la génération du dépôt avant d'activer Pages
         await new Promise(r => setTimeout(r, 2500));
         await enableGitHubPages(account.token, owner, repo);
-        addSiteToList(label, owner, repo);
+        addSiteToList(label, owner, repo, _selectedSiteColor);
       } catch(e) {
         errEl.textContent = 'Erreur : ' + e.message + ' — vous pouvez créer le dépôt manuellement sur GitHub (bouton « Use this template » sur guide-site-template) puis « Enregistrer un dépôt existant ».';
         errEl.classList.remove('hidden');

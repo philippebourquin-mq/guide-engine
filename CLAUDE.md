@@ -117,7 +117,7 @@ Les classes `block-col-2` (span 2 colonnes), `block-col-full` (pleine largeur), 
 | Clé | Contenu |
 |-----|---------|
 | `mtq-gh-account` | `{password, token, unsplashKey}` — compte GitHub unique |
-| `mtq-gh-sites` | `[{id, label, owner, repo}, …]` — destinations enregistrées |
+| `mtq-gh-sites` | `[{id, label, owner, repo, color}, …]` — destinations enregistrées (`color` = hex de fond de l'icône, voir « Icône par destination ») |
 | `mtq-gh-active` | id de la destination actuellement sélectionnée |
 | `mtq-admin-session` | session (connecté/déconnecté) |
 | `mtq-admin-cache-<siteId>` | cache local du contenu de chaque destination (confort admin uniquement — n'a aucun rôle dans la protection anti-périmé, qui est gérée par `engine.js` sur l'origine de chaque destination) |
@@ -131,6 +131,23 @@ Deux voies dans le modal « Nouvelle destination » :
 2. **Enregistrer un dépôt existant** — pour un repo déjà créé manuellement (bouton GitHub « Use this template », ou après échec de la voie 1) : ajoute juste `{label, owner, repo}` à la liste, sans appel API.
 
 Le repo `guide-site-template` doit être marqué **Template repository** dans ses paramètres GitHub pour que la génération automatique fonctionne.
+
+## Icône par destination (favicon coloré)
+
+Contrairement à `engine.js`/`engine.css` (partagés, un seul exemplaire dans `guide-engine`), **chaque destination héberge son propre `favicon.svg` / `favicon-32.png` / `apple-touch-icon.png` à la racine de son dépôt** — c'est la seule façon d'avoir une couleur différente par site sans backend (un favicon est un fichier statique, pas un endpoint paramétrable). `index.html` de chaque destination référence ces fichiers en **chemin relatif** (`./favicon.svg`, etc.), jamais via l'URL `guide-engine`.
+
+`admin.html` génère ces fichiers à la volée en JS (pas de génération manuelle) :
+- `FAVICON_PALETTE` — 8 teintes sobres (sable, sauge, bleu poussière, terracotta, argile rose, olive, bleu nuit, prune), volontairement sans le noir utilisé par l'icône de l'admin (voir plus bas).
+- `faviconFgFor(bgHex)` — calcule la luminance relative du fond et choisit un trait sombre (`#211d1a`) ou clair (`#f4efe6`) pour rester lisible, quelle que soit la couleur.
+- `faviconSvgFor(bgHex)` — construit le SVG (même mark boussole que l'admin) en interpolant fond + trait.
+- `svgToPngDataUrl(svg, size)` — rasterise via `<canvas>` (Image + `drawImage` + `toDataURL`), pour produire les tailles PNG (180 = apple-touch-icon, 32 = favicon PNG de repli).
+- `publishFaviconToSite(token, owner, repo, bgHex)` — publie les 3 fichiers dans le dépôt de la destination via `ghContentsFetch` (même fonction générique que pour `account.enc.json`).
+
+Dans la modale « Nouvelle destination », un nuancier (`FAVICON_PALETTE`) permet de choisir la couleur avant création — `suggestSiteColor()` propose par défaut une teinte pas encore utilisée par une autre destination enregistrée. `addSiteToList(label, owner, repo, color)` stocke `color` dans `mtq-gh-sites` et appelle `publishFaviconToSite` juste après l'enregistrement du site (échec non bloquant — juste un toast, le site reste utilisable).
+
+**L'icône de l'admin** (`admin.html` lui-même) est un cas à part, fixe : fond noir/anthracite (`favicon-admin.svg` + PNG, fichiers statiques dans `guide-engine`, pas générés dynamiquement) — volontairement distincte de toutes les couleurs de destination pour repérer l'onglet admin d'un coup d'œil.
+
+**Changer la couleur d'une destination déjà créée** : pas d'UI dédiée pour l'instant — retirer puis ré-ajouter la destination (« Enregistrer un dépôt existant », même owner/repo) avec une autre couleur dans le nuancier, ou appeler `publishFaviconToSite` manuellement depuis la console.
 
 ## Format des photos/blocs
 
