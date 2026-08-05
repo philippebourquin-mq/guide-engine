@@ -230,18 +230,20 @@
             class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white" />
         </div>
         <div>
-          <label class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 block mb-1.5">Propriétaire GitHub</label>
-          <input id="site-owner" type="text" autocapitalize="none" autocorrect="off"
-            class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white" />
-        </div>
-        <div>
           <button type="button" id="site-repo-toggle" class="text-[10px] text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors">
-            Personnaliser le nom du dépôt
+            Personnaliser propriétaire / nom du dépôt
           </button>
-          <div id="site-repo-field" class="hidden mt-1.5">
-            <label class="text-[10px] text-gray-400 block mb-1.5">Nom du dépôt</label>
-            <input id="site-repo" type="text" autocapitalize="none" autocorrect="off"
-              class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white font-mono" />
+          <div id="site-repo-field" class="hidden mt-2 space-y-3">
+            <div>
+              <label class="text-[10px] text-gray-400 block mb-1.5">Propriétaire GitHub</label>
+              <input id="site-owner" type="text" autocapitalize="none" autocorrect="off"
+                class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white" />
+            </div>
+            <div>
+              <label class="text-[10px] text-gray-400 block mb-1.5">Nom du dépôt</label>
+              <input id="site-repo" type="text" autocapitalize="none" autocorrect="off"
+                class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white font-mono" />
+            </div>
           </div>
         </div>
         <div>
@@ -551,10 +553,16 @@
     }
 
     /* ── base64 UTF-8 ───────────────────────────────────────────── */
+    // Par blocs de 32 Ko : la version octet-par-octet devient très lente (voire bloque l'onglet)
+    // dès que le contenu dépasse quelques Mo (album avec plusieurs photos).
     function toBase64(str) {
-      const bytes = new TextEncoder().encode(str); let b = '';
-      for (const x of bytes) b += String.fromCharCode(x);
-      return btoa(b);
+      const bytes = new TextEncoder().encode(str);
+      let binary = '';
+      const CHUNK = 0x8000;
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+      }
+      return btoa(binary);
     }
     function fromBase64(b64) {
       const bin = atob(b64); const bytes = new Uint8Array(bin.length);
@@ -579,7 +587,8 @@
     }
     async function saveToGitHub(cfg, data) {
       data._ts = Date.now(); // horodatage pour éviter que index.html écrase avec l'ancien data.json
-      const payload = { message: 'Mise à jour du guide (' + new Date().toLocaleDateString('fr-FR') + ')', content: toBase64(JSON.stringify(data, null, 2)), sha: window._fileSha };
+      // JSON compact (pas d'indentation) : réduit la taille transmise, notable avec des albums photo lourds.
+      const payload = { message: 'Mise à jour du guide (' + new Date().toLocaleDateString('fr-FR') + ')', content: toBase64(JSON.stringify(data)), sha: window._fileSha };
       let r;
       try {
         r = await ghFetch(cfg, 'PUT', payload);
@@ -741,6 +750,17 @@
       }
     }
 
+    // Propriétaire du compte GitHub associé au token (utilisé pour préremplir « Propriétaire GitHub »
+    // à la création d'une destination — un seul compte possède quasi toujours tous les dépôts).
+    async function fetchGithubLogin(token) {
+      const resp = await fetch('https://api.github.com/user', {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const u = await resp.json();
+      return u.login;
+    }
+
     /* ── Créer un dépôt de destination depuis le template ─────────── */
     // templateOwner : propriétaire du dépôt guide-site-template (= owner de la nouvelle destination, même compte)
     async function generateSiteRepo(token, templateOwner, owner, repoName) {
@@ -826,11 +846,14 @@
         reader.onload = e => {
           const img = new Image(); img.onerror = reject;
           img.onload = () => {
-            const MAX = 1600, scale = Math.min(1, MAX / Math.max(img.width, img.height));
+            // Chaque photo reste embarquée en base64 dans data.json (pas d'hébergement externe) :
+            // taille/qualité volontairement contenues pour qu'un album de plusieurs dizaines de
+            // photos publie sans ralentir/bloquer l'admin.
+            const MAX = 1400, scale = Math.min(1, MAX / Math.max(img.width, img.height));
             const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
             const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
             canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            resolve({ src: canvas.toDataURL('image/jpeg', 0.82), aspect: +(img.width / img.height).toFixed(3), caption: '' });
+            resolve({ src: canvas.toDataURL('image/jpeg', 0.76), aspect: +(img.width / img.height).toFixed(3), caption: '' });
           };
           img.src = e.target.result;
         };
@@ -1996,7 +2019,7 @@
         renderColorSwatches();
       }));
     }
-    function openSitesModal() {
+    async function openSitesModal() {
       document.getElementById('site-label').value = '';
       const active = getActiveSite();
       document.getElementById('site-owner').value = active?.owner || '';
@@ -2009,6 +2032,13 @@
       renderColorSwatches();
       renderSitesList();
       document.getElementById('sites-modal').classList.remove('hidden');
+      // Pas de destination existante pour déduire le propriétaire → le récupère depuis le token
+      if (!active?.owner) {
+        const token = loadConfig()?.token;
+        if (token) {
+          try { document.getElementById('site-owner').value = await fetchGithubLogin(token); } catch {}
+        }
+      }
     }
     document.getElementById('site-repo-toggle').addEventListener('click', () => {
       document.getElementById('site-repo-field').classList.remove('hidden');

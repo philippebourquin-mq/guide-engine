@@ -132,6 +132,8 @@ Deux voies dans le modal « Nouvelle destination » :
 
 Le repo `guide-site-template` doit être marqué **Template repository** dans ses paramètres GitHub pour que la génération automatique fonctionne.
 
+**Propriétaire et nom du dépôt** : masqués par défaut derrière « Personnaliser propriétaire / nom du dépôt » — seul le nom de la destination et la couleur sont demandés dans le cas courant. Le propriétaire est préREMPLI depuis la destination active déjà enregistrée (`getActiveSite().owner`), ou sinon récupéré directement via l'API GitHub (`fetchGithubLogin(token)` → `GET /user`) puisqu'un seul compte possède quasiment toujours tous les dépôts. Le nom de dépôt reste dérivé du nom de la destination (`slugify`, préfixe `guide-`) tant que le champ n'a pas été édité manuellement (`_touched`).
+
 ## Icône par destination (favicon coloré)
 
 Contrairement à `engine.js`/`engine.css` (partagés, un seul exemplaire dans `guide-engine`), **chaque destination héberge son propre `favicon.svg` / `favicon-32.png` / `apple-touch-icon.png` à la racine de son dépôt** — c'est la seule façon d'avoir une couleur différente par site sans backend (un favicon est un fichier statique, pas un endpoint paramétrable). `index.html` de chaque destination référence ces fichiers en **chemin relatif** (`./favicon.svg`, etc.), jamais via l'URL `guide-engine`.
@@ -148,6 +150,16 @@ Dans la modale « Nouvelle destination », un nuancier (`FAVICON_PALETTE`) perme
 **L'icône de l'admin** (`admin.html` lui-même) est un cas à part, fixe : fond noir/anthracite (`favicon-admin.svg` + PNG, fichiers statiques dans `guide-engine`, pas générés dynamiquement) — volontairement distincte de toutes les couleurs de destination pour repérer l'onglet admin d'un coup d'œil.
 
 **Changer la couleur d'une destination déjà créée** : dans la liste « Destinations enregistrées » (modale « Nouvelle destination »), chaque ligne a un petit rond de couleur cliquable (`data-recolor`) — clic → déplie le nuancier complet sous la ligne (`_recolorSiteId` piloté par `renderSitesList()`), clic sur une teinte → `changeSiteColor(siteId, color)` met à jour `color` dans `mtq-gh-sites`, republie les fichiers via `publishFaviconToSite`, puis replie le nuancier.
+
+## Fiabilité de la publication (albums avec beaucoup de photos)
+
+`data.json` embarque chaque photo directement en base64 (`resizeImage`/`resizeImageForAlbum`, pas d'hébergement externe) — sa taille grossit donc sans limite avec le nombre de photos. Deux points critiques pour que la publication (`saveToGitHub`) reste fiable au-delà de quelques photos :
+
+- **`toBase64` doit rester en version « par blocs »** (`String.fromCharCode.apply` sur des tranches de 32 Ko), jamais octet-par-octet dans une boucle `+=`. La version naïve est devenue **~15× plus lente** au-delà de quelques Mo (mesuré : ~3,6 s de blocage total de l'onglet sur 8 Mo, contre ~250 ms avec les blocs) — comme cet encodage tourne de façon synchrone avant le premier `await` de `saveToGitHub`, un blocage long empêche même le spinner de s'afficher : la publication semble n'avoir rien fait, sans erreur ni confirmation. C'est ce qui s'est produit sur Maroc après l'ajout de nombreuses photos d'album.
+- `JSON.stringify(data)` sans indentation (pas de `null, 2`) pour la publication — l'indentation n'a aucune utilité pour un fichier qui n'est jamais lu à la main, et alourdit inutilement le payload.
+- `resizeImageForAlbum` est volontairement contenu (1400 px / qualité 0.76) plutôt que maximal — un compromis qualité/poids pensé pour qu'un album de plusieurs dizaines de photos reste publiable.
+
+**Ne pas revenir à une version plus simple/lente de `toBase64`** sans revalider sur un payload de plusieurs Mo — c'est une régression silencieuse (aucune erreur, juste un blocage que l'utilisateur interprète comme un échec).
 
 ## Format des photos/blocs
 
