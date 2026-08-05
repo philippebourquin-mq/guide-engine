@@ -235,9 +235,14 @@
             class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white" />
         </div>
         <div>
-          <label class="text-[10px] text-gray-400 block mb-1.5">Nom du dépôt</label>
-          <input id="site-repo" type="text" autocapitalize="none" autocorrect="off"
-            class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white font-mono" />
+          <button type="button" id="site-repo-toggle" class="text-[10px] text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors">
+            Personnaliser le nom du dépôt
+          </button>
+          <div id="site-repo-field" class="hidden mt-1.5">
+            <label class="text-[10px] text-gray-400 block mb-1.5">Nom du dépôt</label>
+            <input id="site-repo" type="text" autocapitalize="none" autocorrect="off"
+              class="w-full border border-gray-200 rounded-md px-3.5 py-2.5 text-sm focus:outline-none focus:border-gray-400 bg-white font-mono" />
+          </div>
         </div>
         <div>
           <label class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 block mb-2">Couleur de l'icône</label>
@@ -1996,12 +2001,20 @@
       const active = getActiveSite();
       document.getElementById('site-owner').value = active?.owner || '';
       document.getElementById('site-repo').value  = '';
+      document.getElementById('site-repo')._touched = false;
+      document.getElementById('site-repo-field').classList.add('hidden');
+      document.getElementById('site-repo-toggle').classList.remove('hidden');
       document.getElementById('site-error').classList.add('hidden');
       _selectedSiteColor = suggestSiteColor();
       renderColorSwatches();
       renderSitesList();
       document.getElementById('sites-modal').classList.remove('hidden');
     }
+    document.getElementById('site-repo-toggle').addEventListener('click', () => {
+      document.getElementById('site-repo-field').classList.remove('hidden');
+      document.getElementById('site-repo-toggle').classList.add('hidden');
+      document.getElementById('site-repo').focus();
+    });
     document.getElementById('sites-close').addEventListener('click', () => document.getElementById('sites-modal').classList.add('hidden'));
     document.getElementById('sites-backdrop').addEventListener('click', () => document.getElementById('sites-modal').classList.add('hidden'));
     document.getElementById('site-label').addEventListener('input', e => {
