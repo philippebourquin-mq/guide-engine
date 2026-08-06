@@ -1195,7 +1195,7 @@
     function closeItemOptions() { document.getElementById('item-options-modal').classList.add('hidden'); _itemOpt = null; }
     document.getElementById('item-opt-close').addEventListener('click', closeItemOptions);
     document.getElementById('item-options-backdrop').addEventListener('click', closeItemOptions);
-    document.getElementById('item-opt-url').addEventListener('input', e => { if (_itemOpt) _itemOpt.item.url = e.target.value; });
+    document.getElementById('item-opt-url').addEventListener('input', e => { if (_itemOpt) { _itemOpt.item.url = e.target.value; scheduleAutoPublish(); } });
     document.querySelectorAll('#item-options-modal [data-text-style-opt]').forEach(btn => {
       btn.addEventListener('click', () => {
         if (!_itemOpt) return;
@@ -1270,6 +1270,7 @@
         let v = el.textContent;
         if (stripDashPrefix) v = v.replace(/^—\s*/, '');
         set(v.trim());
+        scheduleAutoPublish();
       });
     }
 
@@ -1297,7 +1298,7 @@
         e.stopPropagation();
         openItemOptions(item, kind => {
           if (kind === 'textStyle' || kind === 'photo') ctx.rerender();
-          else if (kind === 'pos') { const img = el.querySelector('img'); if (img) img.style.objectPosition = item.objectPosition; }
+          else if (kind === 'pos') { const img = el.querySelector('img'); if (img) img.style.objectPosition = item.objectPosition; scheduleAutoPublish(); }
         });
       });
       el.appendChild(opt);
@@ -1323,7 +1324,7 @@
       cap.dataset.placeholder = 'Légende…';
       cap.textContent = photo.caption || '';
       cap.style.cssText = 'position:absolute;left:0;right:0;bottom:0;z-index:2;padding:5px 8px;font-size:10px;color:#fff;background:linear-gradient(to top,rgba(0,0,0,.65),transparent);outline:none';
-      cap.addEventListener('input', () => { photo.caption = cap.textContent.trim(); });
+      cap.addEventListener('input', () => { photo.caption = cap.textContent.trim(); scheduleAutoPublish(); });
       cap.addEventListener('click', e => e.stopPropagation());
       el.appendChild(cap);
 
@@ -1419,11 +1420,11 @@
         body.innerHTML = classicMirrorHtml(card._items);
         const els = [...body.querySelectorAll('article')];
         els.forEach((el, i) => decorateClassicItem(el, card._items[i], i, {
-          rerender,
+          rerender: () => card._rerender(), // passe par card._rerender (auto-publish inclus), pas le rerender brut
           onDelete(item) {
             const i2 = card._items.indexOf(item);
             if (i2 > -1) card._items.splice(i2, 1);
-            rerender();
+            card._rerender();
           },
         }));
         const addRow = document.createElement('div');
@@ -1433,14 +1434,14 @@
         addTile.textContent = '+';
         addTile.addEventListener('click', () => {
           card._items.push({ title:'', text:'', url:'', photo:'', layout:'', textStyle:'editorial', objectPosition:'center' });
-          rerender();
+          card._rerender();
           const arts = body.querySelectorAll('p[contenteditable]');
           arts[arts.length - 1]?.focus();
         });
         addRow.appendChild(addTile);
         body.appendChild(addRow);
       }
-      card._rerender = rerender;
+      card._rerender = () => { rerender(); scheduleAutoPublish(); };
       rerender();
 
       header.querySelector('[data-icon-btn]').addEventListener('click', e => {
@@ -1477,7 +1478,7 @@
         } else {
           clearTimeout(_deleteTimer);
           card.style.cssText = 'opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .2s';
-          setTimeout(() => { card.remove(); renumberSections(); }, 200);
+          setTimeout(() => { card.remove(); renumberSections(); scheduleAutoPublish(); }, 200);
         }
       });
       return card;
@@ -1541,11 +1542,11 @@
           body.innerHTML = GuideEngine.renderAlbumSection({ photos: card._albumPhotos });
           const cells = [...body.querySelectorAll('.album-cell')];
           cells.forEach((el, i) => decorateAlbumCell(el, card._albumPhotos[i], i, {
-            rerender,
+            rerender: () => card._rerender(), // passe par card._rerender (auto-publish inclus), pas le rerender brut
             onDelete(photo) {
               const i2 = card._albumPhotos.indexOf(photo);
               if (i2 > -1) card._albumPhotos.splice(i2, 1);
-              rerender();
+              card._rerender();
             },
           }));
         }
@@ -1562,13 +1563,13 @@
               if (files.length === 1) addTile.innerHTML = SPIN_SVG;
               try { card._albumPhotos.push(await resizeImageForAlbum(files[i])); } catch {}
             }
-            rerender();
+            card._rerender();
           });
         });
         addRow.appendChild(addTile);
         body.appendChild(addRow);
       }
-      card._rerender = rerender;
+      card._rerender = () => { rerender(); scheduleAutoPublish(); };
       rerender();
 
       const chevron = header.querySelector('[data-chevron]');
@@ -1606,7 +1607,7 @@
         } else {
           clearTimeout(_deleteTimer);
           card.style.cssText = 'opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .2s';
-          setTimeout(() => { card.remove(); renumberSections(); }, 200);
+          setTimeout(() => { card.remove(); renumberSections(); scheduleAutoPublish(); }, 200);
         }
       });
 
@@ -1722,6 +1723,7 @@
         } else {
           d.el.style.opacity = '';
           renumberSections();
+          scheduleAutoPublish();
         }
         d.ghost.remove();
         document.body.style.userSelect = '';
@@ -1749,8 +1751,8 @@
         imgEl.removeAttribute('src'); imgEl.style.opacity = '0';
       }
     }
-    document.getElementById('hero-mirror-title').addEventListener('input', e => { _metaState.title = e.target.textContent.trim(); });
-    document.getElementById('hero-mirror-subtitle').addEventListener('input', e => { _metaState.subtitle = e.target.textContent.trim(); });
+    document.getElementById('hero-mirror-title').addEventListener('input', e => { _metaState.title = e.target.textContent.trim(); scheduleAutoPublish(); });
+    document.getElementById('hero-mirror-subtitle').addEventListener('input', e => { _metaState.subtitle = e.target.textContent.trim(); scheduleAutoPublish(); });
 
     // Adapte _metaState au contrat attendu par la modale options (photo/lien/style/focus)
     const _heroOptItem = {
@@ -1763,14 +1765,14 @@
     heroPhotoBadge.style.top = '10px'; heroPhotoBadge.style.left = ''; heroPhotoBadge.style.right = '10px'; heroPhotoBadge.style.bottom = '';
     heroPhotoBadge.addEventListener('click', e => {
       e.stopPropagation();
-      pickPhotoFile(dataUrl => { _metaState.coverImage = dataUrl; renderHeroMirror(); }, heroPhotoBadge);
+      pickPhotoFile(dataUrl => { _metaState.coverImage = dataUrl; renderHeroMirror(); scheduleAutoPublish(); }, heroPhotoBadge);
     });
     heroMirrorEl.appendChild(heroPhotoBadge);
     const heroOptBadge = mkBadge('admin-options-badge', 'Options de la couverture', OPT_SVG);
     heroOptBadge.style.bottom = ''; heroOptBadge.style.top = '10px'; heroOptBadge.style.left = '10px';
     heroOptBadge.addEventListener('click', e => {
       e.stopPropagation();
-      openItemOptions(_heroOptItem, kind => { renderHeroMirror(); }, { showLink: false, showTextStyle: false, previewShape: 'hero' });
+      openItemOptions(_heroOptItem, kind => { renderHeroMirror(); scheduleAutoPublish(); }, { showLink: false, showTextStyle: false, previewShape: 'hero' });
     });
     heroMirrorEl.appendChild(heroOptBadge);
 
@@ -2061,6 +2063,38 @@
       window.open(`https://${site.owner}.github.io/${site.repo}/`, '_blank', 'noopener');
     });
 
+    /* ── Publication automatique (à la volée) ───────────────────────
+       Tout est local jusqu'au clic sur Publier — risqué en pratique : on peut remplir
+       largement un site puis perdre le tout si on oublie de publier (ou si on change
+       d'appareil avant). scheduleAutoPublish() rattrape ça en republiant automatiquement,
+       avec un anti-rebond (une frappe = une seule publication différée, pas une par
+       caractère), après toute modification qui compte : édition de texte (bindEditableText,
+       légende album, titre/sous-titre héro), et toute opération structurelle qui déclenche un
+       rerender (ajout/suppression d'item ou de photo, redimensionnement, réordonnancement —
+       card._rerender) ou renumberSections() (ajout/suppression/réordonnancement de section).
+       Ne remplace pas le bouton Publier — mêmes garanties (retry sha, migration photos…), juste
+       déclenché tout seul. Feedback volontairement discret (pas de setSaveLoading, qui bloquerait
+       le bouton) : un simple toast, silencieux en cas d'échec réseau ponctuel (retentera au
+       prochain changement plutôt que de harceler l'utilisateur). */
+    let _autoPublishTimer = null;
+    function scheduleAutoPublish() {
+      clearTimeout(_autoPublishTimer);
+      _autoPublishTimer = setTimeout(autoPublishNow, 4000);
+    }
+    async function autoPublishNow() {
+      const cfg = effectiveCfg();
+      if (!cfg) return;
+      const btn = document.getElementById('save-btn');
+      if (btn.disabled) { scheduleAutoPublish(); return; } // publication manuelle en cours, réessaiera après
+      try {
+        await saveToGitHub(cfg, collectData());
+        showToast('Sauvegardé automatiquement', false);
+      } catch (e) {
+        // Échec silencieux : pas de toast d'erreur pour une sauvegarde que l'utilisateur n'a pas
+        // déclenchée lui-même — le prochain changement redéclenchera un essai.
+      }
+    }
+
     /* ── Nouvelle section ────────────────────────────────────────── */
     function closeSectionTypePicker() {
       document.getElementById('section-type-picker').classList.add('hidden');
@@ -2080,6 +2114,10 @@
       sel.removeAllRanges(); sel.addRange(range);
     }
 
+    // Appelée à la fois après une vraie modification (ajout/suppression/réordonnancement de
+    // section) ET au rendu initial d'un site chargé depuis GitHub (renderAdmin) — l'auto-publish
+    // se déclenche donc explicitement à chaque site d'appel concerné, jamais ici, pour ne pas
+    // republier au simple chargement de la page sans qu'aucun changement n'ait eu lieu.
     function renumberSections() {
       [...document.querySelectorAll('#sections-container > [data-section-id]')].forEach((card, i) => {
         const idxEl = card.querySelector('[data-section-index]');
@@ -2094,6 +2132,7 @@
         const card = createSectionCard({ id, icon: key, title: 'Nouvelle section', items: [] });
         document.getElementById('sections-container').appendChild(card);
         renumberSections();
+        scheduleAutoPublish();
         card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         selectContentEditable(card.querySelector('[data-field="section-title"]'));
       });
@@ -2106,6 +2145,7 @@
         const card = createAlbumSectionCard({ id, icon: key, title: 'Album', photos: [] });
         document.getElementById('sections-container').appendChild(card);
         renumberSections();
+        scheduleAutoPublish();
         card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         selectContentEditable(card.querySelector('[data-field="section-title"]'));
       });

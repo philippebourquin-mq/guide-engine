@@ -192,6 +192,18 @@ Dans la modale « Nouvelle destination », un nuancier (`FAVICON_PALETTE`) perme
 
 **Changer la couleur d'une destination déjà créée** : dans la liste « Destinations enregistrées » (modale « Nouvelle destination »), chaque ligne a un petit rond de couleur cliquable (`data-recolor`) — clic → déplie le nuancier complet sous la ligne (`_recolorSiteId` piloté par `renderSitesList()`), clic sur une teinte → `changeSiteColor(siteId, color)` met à jour `color` dans `mtq-gh-sites`, republie les fichiers via `publishFaviconToSite`, puis replie le nuancier.
 
+## Publication automatique (à la volée)
+
+Tout reste local (dans `card._items`/`card._albumPhotos`/`_metaState`) jusqu'à publication — mais compter uniquement sur un clic manuel sur Publier est risqué en pratique : on peut remplir largement un site puis tout perdre en oubliant de publier, ou en changeant d'appareil entre-temps (déjà arrivé). `scheduleAutoPublish()` republie automatiquement après toute modification qui compte, avec un anti-rebond de 4 s (une rafale de frappes/actions = une seule publication différée, pas une par événement — vérifié : 10 modifications en succession rapide ne déclenchent qu'un seul appel réseau).
+
+**Réutilise exactement le circuit de `saveToGitHub`** (retry sha, migration photos en fichiers séparés…) — pas un chemin parallèle. Feedback volontairement discret : pas de `setSaveLoading` (bloquerait le bouton Publier alors que l'utilisateur n'a rien demandé), juste un toast « Sauvegardé automatiquement » ; échec silencieux (le prochain changement redéclenchera un essai, pas la peine d'alerter pour un aléa réseau ponctuel sur une action que l'utilisateur n'a pas lui-même déclenchée). Si une publication manuelle est en cours (`save-btn` désactivé), l'auto-publish se redécale au lieu de se superposer.
+
+**Déclenché après, pas avant, la mutation réelle des données** — piège rencontré en implémentant : beaucoup de callbacks internes (suppression d'item, changement de style/photo/position depuis la modale options) appelaient le `rerender()` brut de la closure plutôt que `card._rerender()` (seul point qui inclut l'auto-publish) — corrigé en faisant pointer ces callbacks vers `card._rerender()`. **Tout nouveau point de mutation doit passer par `card._rerender()`, jamais par le `rerender` interne à la fonction**, sous peine de silencieusement échapper à l'auto-publish (et de casser le zoom photo / la réassurance visuelle qui en dépendent).
+
+**`renumberSections()` ne déclenche PAS l'auto-publish elle-même** — elle est aussi appelée au rendu initial d'un site fraîchement chargé depuis GitHub (`renderAdmin`), où republier serait une publication fantôme sans changement réel. L'auto-publish est déclenché explicitement à chaque site d'appel qui représente une vraie action utilisateur (ajout/suppression/réordonnancement de section), jamais dans la fonction elle-même.
+
+Couverture actuelle : édition de texte (`bindEditableText`, légende album, titre/sous-titre héro, lien), ajout/suppression/redimensionnement/réordonnancement d'item ou de photo (via `card._rerender()`), changement de style de texte/photo/position (modale options), ajout/suppression/réordonnancement de section, upload de la photo de couverture.
+
 ## Fiabilité de la publication (albums avec beaucoup de photos)
 
 L'import en masse (plusieurs dizaines de photos) est un usage normal de ces sites — `data.json` doit donc rester léger quel que soit le nombre de photos. Deux couches de correctifs, complémentaires :
