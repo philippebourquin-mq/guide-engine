@@ -30,7 +30,7 @@ Chaque destination a son propre repo + son propre GitHub Pages (URL propre, CNAM
 ## Fichiers
 
 - `engine.js` — tout le rendu : patterns album, `render()`, `renderClassicSection()`, `renderAlbumSection()`, lightbox, favoris. Exposé via `window.GuideEngine.init(config)`.
-- `engine.css` — styles partagés (album, cartes, animations).
+- `engine.css` — styles partagés (album, cartes, animations). Contient un garde-fou anti-débordement mobile : `html, body { overflow-x: hidden; max-width: 100% }` + `img { max-width: 100% }`, en CSS statique donc actif dès le premier rendu — les destinations chargent Tailwind via CDN (compilation à l'exécution, cf l'avertissement console de Tailwind lui-même), ce qui laisse une fenêtre où une image sans classes encore appliquées peut se rendre à sa largeur intrinsèque et dépasser le viewport ; sur mobile Safari, ce dépassement même bref peut déclencher un dézoom automatique qui reste ensuite « collé » (oblige à re-zoomer manuellement). Ne pas retirer ces deux règles sans une meilleure garantie contre ce cas.
 - `admin.html` — admin multi-sites : compte GitHub unique + liste de destinations + sélecteur.
 
 ## `GuideEngine.init(config)`
@@ -109,6 +109,16 @@ Les classes `block-col-2` (span 2 colonnes), `block-col-full` (pleine largeur), 
 **Pourquoi ce changement** (vs. l'ancien système à patterns) : une photo auto pouvait se retrouver seule dans son groupe et être rendue en plein format (bien plus grande que les autres), sans qu'on puisse la redimensionner depuis l'admin — `auto`/`1x1` étant déjà le format le plus petit du système, rien de plus petit où « rétrécir ». La grille fixe élimine complètement ce cas : la taille affichée correspond toujours exactement au format NxM choisi, dans les deux sens (agrandir/rétrécir), sans exception.
 
 `_albumGroups`/`_ALB_PAT`/`_albSz` restent utilisés par les sections **classiques tout auto** (cycling, toujours en place) — seul l'album a changé.
+
+## Zoom photo (lightbox) — album ET sections classiques
+
+Le lightbox (`#lightbox`/`openLightbox`/`closeLightbox`, markup dans chaque `index.html` de destination) n'est plus réservé à l'album : `renderItem()` pose les mêmes attributs (`data-idx="0"`, `data-album-photos` avec un tableau d'une seule entrée, `onclick="openLightbox(this)"`) sur toute carte avec photo (classique standard et bannière `highlight`), via l'helper `singlePhotoLightboxAttrs(src, caption)`. Aucune nouvelle fonction JS côté lightbox — il consomme `data-album-photos` de la même façon quel que soit le nombre de photos qu'il contient.
+
+**Admin** : `decorateClassicItem`/`decorateAlbumCell` font déjà `el.removeAttribute('onclick')` en première ligne (nécessaire avant même ce changement, pour l'album) — l'`onclick` hérité de `renderItem` est donc automatiquement neutralisé dans l'éditeur, aucune modification supplémentaire nécessaire côté admin.
+
+Le clic sur le lien d'un item (`mkLink`) fait `event.stopPropagation()` pour ne pas déclencher le lightbox en plus de la navigation.
+
+Fond du lightbox en `#000` opaque (pas `rgba(0,0,0,.97)`) — à cette opacité, un titre héro clair juste derrière restait faiblement visible en transparence sur mobile. Padding latéral du conteneur image réduit à 64px (au lieu de 72px) pour laisser un peu plus de place à l'image sur les écrans étroits, tout en restant au-dessus de la largeur des flèches prev/next (48px + 14px de marge).
 
 ## Admin — comptes et destinations
 
@@ -191,6 +201,16 @@ L'import en masse (plusieurs dizaines de photos) est un usage normal de ces site
 ### Un seul mode — pas de bascule « Modifier »
 
 Tout est éditable/déplaçable/redimensionnable en permanence (déjà derrière le login admin — pas besoin d'un mode séparé). Chaque bloc/photo décoré porte 4 badges discrets aux coins (icône seule + ombre portée, pas de pastille pleine — voir `.admin-handle` dans le CSS) : drag (haut-gauche), suppression (haut-droite), options ou photo (bas-gauche — options pour les blocs classiques avec photo/lien/style, photo directe pour l'album), redimensionnement (bas-droite). Une tuile « + » ronde et discrète en fin de grille permet d'ajouter.
+
+### Repli/dépliage d'une section (tap sur l'en-tête)
+
+L'en-tête entier d'une section (`createSectionCard`/`createAlbumSectionCard`) est cliquable pour replier/déplier son corps — pas un petit chevron isolé entre les badges (pénible à viser sur mobile). Le chevron (`[data-chevron]`) reste un simple indicateur visuel, plus un bouton. Les contrôles avec leur propre action (poignée de drag, titre `contenteditable`, changement d'icône, suppression) appellent `e.stopPropagation()` dans leur propre listener pour ne pas déclencher le repli en même temps.
+
+### Réassurance pendant l'upload/la publication
+
+- `setBusy(el, on)` bascule un badge/bouton en spinner (icône remplacée, `pointerEvents:none`, `disabled` si applicable) pendant un `resizeImage`/`resizeImageForAlbum` — sans ça un bouton reste visuellement inerte entre le choix du fichier et le résultat. Câblé sur : badge photo de couverture, badge photo d'une cellule d'album, bouton « Changer » de la modale d'options, tuile « + » d'ajout de photos d'album (avec compteur `X/Y` si plusieurs fichiers).
+- Le bouton Publier a un spinner intégré (`setSaveLoading`, structure `<span data-save-spin>` + `<span data-save-label>` plutôt qu'un simple `textContent`, pour ne pas perdre le spinner quand `commitPhotosAndData` met à jour le libellé avec la progression `setSaveLabel`).
+- Le toast de succès ne prétend plus un délai fixe (« ~1 min », faux dès que la publication inclut des photos) — `saveToGitHub` retourne le nombre de photos publiées, utilisé pour un message honnête (« Publié · N photo(s) envoyée(s) » vs « le site va se mettre à jour dans quelques instants »).
 
 ### Édition inline
 
