@@ -144,6 +144,18 @@ Le repo `guide-site-template` doit être marqué **Template repository** dans se
 
 **Propriétaire et nom du dépôt** : masqués par défaut derrière « Personnaliser propriétaire / nom du dépôt » — seul le nom de la destination et la couleur sont demandés dans le cas courant. Le propriétaire est préREMPLI depuis la destination active déjà enregistrée (`getActiveSite().owner`), ou sinon récupéré directement via l'API GitHub (`fetchGithubLogin(token)` → `GET /user`) puisqu'un seul compte possède quasiment toujours tous les dépôts. Le nom de dépôt reste dérivé du nom de la destination (`slugify`, préfixe `guide-`) tant que le champ n'a pas été édité manuellement (`_touched`).
 
+### Modale « Destinations » — lister/gérer/supprimer
+
+Icône dédiée dans le header (grille 2×2, entre le sélecteur de destination et l'engrenage Paramètres) → `openManageSitesModal()` → `#manage-sites-modal`. Distincte du modal « Nouvelle destination » (`#sites-modal`, toujours accessible via le petit « + » du sélecteur ou via « + Nouvelle destination » en bas de la modale Destinations) — celui-ci ne gère plus que la création, la liste vit uniquement ici (`renderManageSitesList`, un seul endroit pour éviter deux listes désynchronisées).
+
+Chaque ligne : rond de couleur (clic → nuancier inline, même mécanique que la création — `changeSiteColor`), label + `owner/repo`, icône corbeille.
+
+**Suppression à deux niveaux**, volontairement dissymétriques en friction :
+- **« Retirer de la liste seulement »** (`data-unregister-only`) — retire l'entrée de `mtq-gh-sites` uniquement, aucun appel API. Le dépôt GitHub et le site publié restent intacts ; réversible en ré-enregistrant le même `owner/repo`. Un seul clic (pas de confirmation dédiée : c'est déjà la sortie « douce »).
+- **« Supprimer le dépôt GitHub »** (`data-delete-confirm-btn`) — appelle `deleteGithubRepo(token, owner, repo)` (`DELETE /repos/{owner}/{repo}`), donc supprime réellement le dépôt (récupérable ~90 jours via la corbeille GitHub, pas plus). Bouton désactivé tant que le champ texte associé ne contient pas exactement `owner/repo` (comparaison stricte, recalculée à chaque frappe) — friction délibérée, pas de double-clic/armed-delete comme ailleurs dans l'admin (section, item…) : une vraie destruction externe irréversible mérite plus qu'un clic répété par erreur. Nécessite un token avec le scope `delete_repo` (classic) ou la permission Administration:Write (fine-grained) — sinon `deleteGithubRepo` remonte l'erreur GitHub telle quelle dans le panneau (`[data-delete-error]`).
+
+**Prévu pour grandir** : cette modale est le point d'entrée annoncé pour la gestion des accès (à venir) — garder la liste/les actions par site ici plutôt que de les redisperser ailleurs.
+
 ## Icône par destination (favicon coloré)
 
 Contrairement à `engine.js`/`engine.css` (partagés, un seul exemplaire dans `guide-engine`), **chaque destination héberge son propre `favicon.svg` / `favicon-32.png` / `apple-touch-icon.png` à la racine de son dépôt** — c'est la seule façon d'avoir une couleur différente par site sans backend (un favicon est un fichier statique, pas un endpoint paramétrable). `index.html` de chaque destination référence ces fichiers en **chemin relatif** (`./favicon.svg`, etc.), jamais via l'URL `guide-engine`.

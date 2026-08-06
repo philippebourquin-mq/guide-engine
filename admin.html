@@ -262,10 +262,27 @@
           </button>
           <p class="text-[10px] text-gray-400 leading-relaxed mt-1">« Créer automatiquement » génère le dépôt depuis <code class="font-mono">guide-site-template</code> et active GitHub Pages. « Enregistrer » ajoute simplement un dépôt déjà créé (ex. via le bouton « Use this template » sur GitHub) à la liste des destinations.</p>
         </div>
-        <div class="border-t border-gray-100 pt-4">
-          <p class="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 mb-2">Destinations enregistrées</p>
-          <div id="sites-list" class="space-y-1.5"></div>
-        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toutes les destinations (liste, couleur, suppression) ────── -->
+  <div id="manage-sites-modal" class="hidden fixed inset-0 z-50 flex flex-col">
+    <div id="manage-sites-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+    <div class="relative mt-auto md:m-auto bg-white rounded-t-xl md:rounded-lg w-full md:max-w-md flex flex-col max-h-[92vh] shadow-2xl">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+        <span class="text-sm font-semibold">Destinations</span>
+        <button id="manage-sites-close"
+          class="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-5 space-y-1.5">
+        <div id="manage-sites-list" class="space-y-1.5"></div>
+        <button type="button" id="manage-sites-add-btn"
+          class="w-full mt-2 py-2.5 border border-dashed border-gray-300 text-gray-400 hover:text-gray-700 hover:border-gray-400 text-xs font-medium rounded-md transition-colors">
+          + Nouvelle destination
+        </button>
       </div>
     </div>
   </div>
@@ -389,6 +406,13 @@
         <button id="site-add-btn" type="button" title="Nouvelle destination"
           class="w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0 text-base leading-none">+</button>
       </div>
+      <button id="manage-sites-btn"
+        class="w-9 h-9 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" title="Destinations">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" class="w-4 h-4">
+          <rect x="2.5" y="3" width="6" height="6" rx="1.2"/><rect x="11.5" y="3" width="6" height="6" rx="1.2"/>
+          <rect x="2.5" y="11" width="6" height="6" rx="1.2"/><rect x="11.5" y="11" width="6" height="6" rx="1.2"/>
+        </svg>
+      </button>
       <button id="settings-btn"
         class="w-9 h-9 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" title="Paramètres">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" class="w-4 h-4">
@@ -2059,6 +2083,28 @@
     });
     document.getElementById('site-add-btn').addEventListener('click', openSitesModal);
 
+    /* ── Modale « Destinations » : liste, couleur, suppression ─────
+       Suppression « propre » = supprime réellement le dépôt GitHub (API DELETE), pas juste un
+       retrait de la liste locale — irréversible côté GitHub (corbeille ~90 jours, pas plus), donc
+       confirmation forte : il faut retaper exactement owner/repo pour activer le bouton. Une
+       option plus légère (« retirer de la liste seulement ») reste disponible à côté, sans
+       toucher au dépôt, pour le cas où on veut juste masquer une destination dans l'admin. */
+    async function deleteGithubRepo(token, owner, repo) {
+      const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+      });
+      if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.message || `HTTP ${resp.status}`); }
+    }
+    function removeSiteFromList(id) {
+      const remaining = loadSites().filter(s => s.id !== id);
+      saveSites(remaining);
+      if (getActiveSiteId() === id) setActiveSiteId(remaining[0]?.id || '');
+      _deleteSiteId = null; _recolorSiteId = null;
+      renderManageSitesList(); renderSiteSelect();
+      if (remaining.length && getActiveSiteId()) initAdmin();
+      try { publishAccountBlob(); } catch {}
+    }
     let _recolorSiteId = null;
     async function changeSiteColor(siteId, color) {
       const sites = loadSites();
@@ -2067,7 +2113,7 @@
       site.color = color;
       saveSites(sites);
       _recolorSiteId = null;
-      renderSitesList();
+      renderManageSitesList();
       const token = loadConfig()?.token;
       if (token) {
         try { await publishFaviconToSite(token, site.owner, site.repo, color); showToast('Icône mise à jour', false); }
@@ -2075,43 +2121,57 @@
       }
       try { await publishAccountBlob(); } catch {}
     }
-    function renderSitesList() {
+    let _deleteSiteId = null;
+    function renderManageSitesList() {
       const sites = loadSites();
-      document.getElementById('sites-list').innerHTML = sites.map(s => {
+      document.getElementById('manage-sites-list').innerHTML = sites.map(s => {
         const color = s.color || FAVICON_PALETTE[0].bg;
-        const expanded = _recolorSiteId === s.id;
+        const recolorOpen = _recolorSiteId === s.id;
+        const deleteOpen = _deleteSiteId === s.id;
+        const fullName = `${s.owner}/${s.repo}`;
         return `
-        <div class="rounded-md bg-gray-50">
-          <div class="flex items-center justify-between text-xs px-3 py-2">
+        <div class="rounded-md bg-gray-50 border border-gray-100">
+          <div class="flex items-center justify-between text-xs px-3 py-2.5">
             <div class="flex items-center gap-2 min-w-0">
               <button type="button" data-recolor="${esc(s.id)}" title="Changer la couleur de l'icône"
                 class="w-4 h-4 rounded-full border border-black/10 shrink-0" style="background:${esc(color)}"></button>
-              <span class="text-gray-700 truncate">${esc(s.label)} <span class="text-gray-400">— ${esc(s.owner)}/${esc(s.repo)}</span></span>
+              <span class="text-gray-700 truncate">${esc(s.label)} <span class="text-gray-400">— ${esc(fullName)}</span></span>
             </div>
-            <button type="button" data-remove-site="${esc(s.id)}" class="text-gray-300 hover:text-red-500 shrink-0 ml-2">✕</button>
+            <button type="button" data-open-delete="${esc(s.id)}" title="Supprimer"
+              class="text-gray-300 hover:text-red-500 shrink-0 ml-2 w-6 h-6 flex items-center justify-center rounded-md hover:bg-red-50 transition-colors">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M8 6V4.5a1 1 0 011-1h2a1 1 0 011 1V6m-7 0 .6 9.4a1 1 0 001 .9h4.8a1 1 0 001-.9L14 6"/></svg>
+            </button>
           </div>
-          ${expanded ? `<div class="flex flex-wrap gap-2 px-3 pb-2.5" data-recolor-swatches="${esc(s.id)}">${
+          ${recolorOpen ? `<div class="flex flex-wrap gap-2 px-3 pb-2.5" data-recolor-swatches="${esc(s.id)}">${
             FAVICON_PALETTE.map(c => `<button type="button" data-recolor-pick="${c.bg}" title="${esc(c.name)}"
               class="w-6 h-6 rounded-full border-2 ${c.bg === color ? 'border-gray-900' : 'border-transparent'}"
               style="background:${c.bg}"></button>`).join('')
           }</div>` : ''}
+          ${deleteOpen ? `<div class="px-3 pb-3 pt-1 border-t border-gray-100 space-y-2.5">
+            <p class="text-[11px] text-red-500 leading-relaxed">Supprime définitivement le dépôt GitHub <code class="font-mono">${esc(fullName)}</code> et le site publié — irréversible (récupérable ~90 jours via la corbeille GitHub, pas plus).</p>
+            <input type="text" placeholder="Tapez ${esc(fullName)} pour confirmer" data-delete-confirm-input="${esc(s.id)}" autocapitalize="none" autocorrect="off"
+              class="w-full border border-gray-200 rounded-md px-2.5 py-2 text-xs font-mono focus:outline-none focus:border-red-400 bg-white" />
+            <div class="flex items-center gap-2">
+              <button type="button" data-delete-confirm-btn="${esc(s.id)}" disabled
+                class="flex-1 py-2 rounded-md text-xs font-semibold bg-red-100 text-red-300 cursor-not-allowed transition-colors">
+                Supprimer le dépôt GitHub
+              </button>
+              <button type="button" data-unregister-only="${esc(s.id)}"
+                class="text-[10px] text-gray-400 hover:text-gray-700 underline underline-offset-2 whitespace-nowrap shrink-0">
+                Retirer de la liste seulement
+              </button>
+            </div>
+            <div data-delete-error class="hidden text-[11px] text-red-500"></div>
+          </div>` : ''}
         </div>`;
       }).join('') || '<p class="text-xs text-gray-400">Aucune destination enregistrée.</p>';
-      document.querySelectorAll('[data-remove-site]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = btn.dataset.removeSite;
-          const remaining = loadSites().filter(s => s.id !== id);
-          saveSites(remaining);
-          if (getActiveSiteId() === id) setActiveSiteId(remaining[0]?.id || '');
-          renderSitesList(); renderSiteSelect();
-          if (remaining.length && getActiveSiteId()) initAdmin();
-        });
-      });
+
       document.querySelectorAll('[data-recolor]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = btn.dataset.recolor;
+          _deleteSiteId = null;
           _recolorSiteId = _recolorSiteId === id ? null : id;
-          renderSitesList();
+          renderManageSitesList();
         });
       });
       document.querySelectorAll('[data-recolor-pick]').forEach(btn => {
@@ -2120,7 +2180,62 @@
           changeSiteColor(id, btn.dataset.recolorPick);
         });
       });
+      document.querySelectorAll('[data-open-delete]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.openDelete;
+          _recolorSiteId = null;
+          _deleteSiteId = _deleteSiteId === id ? null : id;
+          renderManageSitesList();
+          if (_deleteSiteId === id) document.querySelector(`[data-delete-confirm-input="${id}"]`)?.focus();
+        });
+      });
+      document.querySelectorAll('[data-delete-confirm-input]').forEach(inp => {
+        inp.addEventListener('input', () => {
+          const id = inp.dataset.deleteConfirmInput;
+          const site = loadSites().find(s => s.id === id);
+          const btn = document.querySelector(`[data-delete-confirm-btn="${id}"]`);
+          const match = site && inp.value.trim() === `${site.owner}/${site.repo}`;
+          btn.disabled = !match;
+          btn.className = match
+            ? 'flex-1 py-2 rounded-md text-xs font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors'
+            : 'flex-1 py-2 rounded-md text-xs font-semibold bg-red-100 text-red-300 cursor-not-allowed transition-colors';
+        });
+      });
+      document.querySelectorAll('[data-delete-confirm-btn]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.deleteConfirmBtn;
+          const site = loadSites().find(s => s.id === id);
+          if (!site) return;
+          const token = loadConfig()?.token;
+          const errEl = document.querySelector('[data-delete-error]');
+          btn.disabled = true; btn.textContent = 'Suppression…';
+          try {
+            if (!token) throw new Error('Token GitHub manquant');
+            await deleteGithubRepo(token, site.owner, site.repo);
+            removeSiteFromList(id);
+            showToast('Destination et dépôt GitHub supprimés', false);
+          } catch (e) {
+            btn.disabled = false; btn.textContent = 'Supprimer le dépôt GitHub';
+            if (errEl) { errEl.textContent = 'Erreur : ' + e.message; errEl.classList.remove('hidden'); }
+          }
+        });
+      });
+      document.querySelectorAll('[data-unregister-only]').forEach(btn => {
+        btn.addEventListener('click', () => removeSiteFromList(btn.dataset.unregisterOnly));
+      });
     }
+    function openManageSitesModal() {
+      _recolorSiteId = null; _deleteSiteId = null;
+      renderManageSitesList();
+      document.getElementById('manage-sites-modal').classList.remove('hidden');
+    }
+    document.getElementById('manage-sites-btn').addEventListener('click', openManageSitesModal);
+    document.getElementById('manage-sites-close').addEventListener('click', () => document.getElementById('manage-sites-modal').classList.add('hidden'));
+    document.getElementById('manage-sites-backdrop').addEventListener('click', () => document.getElementById('manage-sites-modal').classList.add('hidden'));
+    document.getElementById('manage-sites-add-btn').addEventListener('click', () => {
+      document.getElementById('manage-sites-modal').classList.add('hidden');
+      openSitesModal();
+    });
     function slugify(s) { return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'destination'; }
     let _selectedSiteColor = FAVICON_PALETTE[0].bg;
     function suggestSiteColor() {
@@ -2151,7 +2266,6 @@
       document.getElementById('site-error').classList.add('hidden');
       _selectedSiteColor = suggestSiteColor();
       renderColorSwatches();
-      renderSitesList();
       document.getElementById('sites-modal').classList.remove('hidden');
       // Pas de destination existante pour déduire le propriétaire → le récupère depuis le token
       if (!active?.owner) {
