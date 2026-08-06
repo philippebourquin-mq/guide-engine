@@ -63,6 +63,13 @@ body { background: #e8e4df; font-family: 'Poppins', system-ui, sans-serif; }
   flex-direction: column;
   gap: var(--sec-gap);
 }
+/* Les enfants directs d'une grille ont un min-width:auto implicite : une seule chaîne
+   non-coupable (URL collée sans espace, mot très long) suffit alors à forcer la colonne — même
+   déclarée 1fr — à s'élargir jusqu'à la largeur intrinsèque du texte, débordant le viewport
+   mobile malgré la media query ci-dessous (qui ne fait que réduire le nombre de colonnes, pas
+   ce comportement). overflow-wrap permet en plus au texte de couper si besoin. */
+.guide-grid-3 > *, .cyc-row > * { min-width: 0; }
+.guide-grid-3 p, .guide-grid-3 h3, .cyc-row p, .cyc-row h3 { overflow-wrap: break-word; }
 @media (max-width: 639px) {
   .block-col-2 { grid-column: span 1; }
   .guide-grid-3,
