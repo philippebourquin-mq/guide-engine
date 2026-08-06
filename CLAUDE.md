@@ -153,13 +153,25 @@ Dans la modale « Nouvelle destination », un nuancier (`FAVICON_PALETTE`) perme
 
 ## Fiabilité de la publication (albums avec beaucoup de photos)
 
-`data.json` embarque chaque photo directement en base64 (`resizeImage`/`resizeImageForAlbum`, pas d'hébergement externe) — sa taille grossit donc sans limite avec le nombre de photos. Deux points critiques pour que la publication (`saveToGitHub`) reste fiable au-delà de quelques photos :
+L'import en masse (plusieurs dizaines de photos) est un usage normal de ces sites — `data.json` doit donc rester léger quel que soit le nombre de photos. Deux couches de correctifs, complémentaires :
 
-- **`toBase64` doit rester en version « par blocs »** (`String.fromCharCode.apply` sur des tranches de 32 Ko), jamais octet-par-octet dans une boucle `+=`. La version naïve est devenue **~15× plus lente** au-delà de quelques Mo (mesuré : ~3,6 s de blocage total de l'onglet sur 8 Mo, contre ~250 ms avec les blocs) — comme cet encodage tourne de façon synchrone avant le premier `await` de `saveToGitHub`, un blocage long empêche même le spinner de s'afficher : la publication semble n'avoir rien fait, sans erreur ni confirmation. C'est ce qui s'est produit sur Maroc après l'ajout de nombreuses photos d'album.
-- `JSON.stringify(data)` sans indentation (pas de `null, 2`) pour la publication — l'indentation n'a aucune utilité pour un fichier qui n'est jamais lu à la main, et alourdit inutilement le payload.
-- `resizeImageForAlbum` est volontairement contenu (1400 px / qualité 0.76) plutôt que maximal — un compromis qualité/poids pensé pour qu'un album de plusieurs dizaines de photos reste publiable.
+### Photos = fichiers du dépôt, pas base64 embarqué dans data.json
 
-**Ne pas revenir à une version plus simple/lente de `toBase64`** sans revalider sur un payload de plusieurs Mo — c'est une régression silencieuse (aucune erreur, juste un blocage que l'utilisateur interprète comme un échec).
+`resizeImage`/`resizeImageForAlbum` produisent toujours une `data:image/jpeg;base64,…` en local (édition WYSIWYG instantanée, aucun appel réseau tant qu'on n'a pas publié — modèle inchangé). C'est **au moment de publier** que `saveToGitHub` fait la différence :
+
+- `migratePhotosToFiles(data)` parcourt `meta.coverImage`, chaque `item.photo` et chaque `photo.src`, et pour tout ce qui commence par `data:image` : calcule un hash (`sha256Hex`, 20 caractères) du contenu, l'envoie comme fichier séparé `photos/<hash>.jpg`, et remplace la valeur dans `data` par le chemin relatif `./photos/<hash>.jpg`. Les URL déjà externes (Unsplash) ou déjà migrées ne sont pas touchées. Le hash donne une déduplication gratuite (même photo réutilisée = même fichier).
+- S'il y a des photos à migrer, `commitPhotosAndData` publie **photos + data.json en un seul commit atomique** via l'API Git Data (`/git/blobs` par photo → `/git/trees` avec `base_tree` → `/git/commits` → `PATCH /git/refs/heads/main`) — pas de N commits séparés, pas de PUT géant sur data.json. Le bouton Publier affiche une progression (« Envoi des photos… X/Y »).
+- S'il n'y a **aucune** photo à migrer (juste du texte édité), on garde le chemin rapide historique : simple `PUT` sur `contents/data.json` (`ghFetch`), avec le retry-on-sha-mismatch existant.
+- **Aucun changement côté `engine.js`/rendu** : un chemin relatif (`./photos/xxx.jpg`) fonctionne exactement comme une data URI dans un `<img src>` — le moteur ne sait même pas que ça a changé.
+- Les photos déjà publiées en base64 avant cette évolution (ex. anciens contenus Martinique/Maroc) se migrent **automatiquement à la prochaine publication** qui les touche — pas de script de migration séparé à lancer.
+
+### Fiabilité de l'encodage (reste valable même hors migration photo)
+
+- **`toBase64` doit rester en version « par blocs »** (`String.fromCharCode.apply` sur des tranches de 32 Ko), jamais octet-par-octet dans une boucle `+=`. La version naïve est devenue **~15× plus lente** au-delà de quelques Mo (mesuré : ~3,6 s de blocage total de l'onglet sur 8 Mo, contre ~250 ms avec les blocs) — comme cet encodage tourne de façon synchrone avant le premier `await`, un blocage long empêche même le spinner de s'afficher : la publication semble n'avoir rien fait, sans erreur ni confirmation. C'est ce qui s'est produit sur Maroc avant que la migration photo n'existe.
+- `JSON.stringify(data)` sans indentation (pas de `null, 2`) pour la publication — inutile pour un fichier jamais lu à la main, alourdit le payload.
+- `resizeImageForAlbum` reste volontairement contenu (1400 px / qualité 0.76) plutôt que maximal, même si le poids total n'est plus le facteur limitant côté publication — ça reste ce qui est transmis et stocké par photo.
+
+**Ne pas revenir à une version plus simple/lente de `toBase64`**, et ne pas faire dépendre à nouveau la publication d'un unique gros payload — les deux sont des régressions silencieuses (aucune erreur, juste un blocage ou un échec que l'utilisateur interprète à tort comme un bug côté contenu).
 
 ## Format des photos/blocs
 

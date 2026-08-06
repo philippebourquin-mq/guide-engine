@@ -585,8 +585,85 @@
       const text = file.content ? fromBase64(file.content.replace(/\n/g,'')) : await (await fetch(file.download_url)).text();
       return JSON.parse(text);
     }
+
+    /* ── Photos : fichiers du dépôt plutôt qu'embarquées en base64 dans data.json ──
+       Un data.json qui embarque chaque photo grossit sans limite avec le nombre de photos
+       (c'est l'usage réel des sites : albums de plusieurs dizaines de photos), au point de
+       rendre la publication lente ou de la faire échouer. Toute photo encore en `data:image/…`
+       au moment de publier est envoyée comme fichier séparé (`photos/<hash>.jpg`) dans le
+       dépôt de la destination, et remplacée par son chemin relatif dans data.json — qui reste
+       ainsi léger quel que soit le nombre de photos. Aucun changement côté engine.js : un
+       chemin relatif fonctionne exactement comme une data URI dans un <img src>. */
+    async function sha256Hex(bytes) {
+      const buf = await crypto.subtle.digest('SHA-256', bytes);
+      return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 20);
+    }
+    async function migratePhotosToFiles(data) {
+      const pending = [];
+      function track(obj, key) {
+        const val = obj[key];
+        if (typeof val === 'string' && val.startsWith('data:image')) pending.push({ obj, key, dataUrl: val });
+      }
+      if (data.meta) track(data.meta, 'coverImage');
+      (data.sections || []).forEach(s => {
+        (s.items || []).forEach(it => track(it, 'photo'));
+        (s.photos || []).forEach(p => track(p, 'src'));
+      });
+      const files = [];
+      for (const p of pending) {
+        const base64 = p.dataUrl.split(',')[1];
+        const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+        const path = `photos/${await sha256Hex(bytes)}.jpg`;
+        p.obj[p.key] = './' + path;
+        files.push({ path, content: base64 });
+      }
+      return files;
+    }
+    async function ghGitApi(cfg, path, method, body) {
+      const opts = { method, headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' } };
+      if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+      const resp = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}${path}`, opts);
+      if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.message || `HTTP ${resp.status}`); }
+      return resp.json();
+    }
+    // Publie les photos (s'il y en a de nouvelles) + data.json en un seul commit atomique via
+    // l'API Git Data (blobs → tree → commit → ref) — un simple PUT sur data.json ne suffit plus
+    // dès qu'on ajoute des fichiers binaires séparés.
+    async function commitPhotosAndData(cfg, data, photoFiles) {
+      const btn = document.getElementById('save-btn');
+      const ref = await ghGitApi(cfg, '/git/ref/heads/main', 'GET');
+      const baseCommitSha = ref.object.sha;
+      const baseCommit = await ghGitApi(cfg, `/git/commits/${baseCommitSha}`, 'GET');
+      const treeEntries = [];
+      for (let i = 0; i < photoFiles.length; i++) {
+        if (btn) btn.textContent = `Envoi des photos… ${i + 1}/${photoFiles.length}`;
+        const f = photoFiles[i];
+        const blob = await ghGitApi(cfg, '/git/blobs', 'POST', { content: f.content, encoding: 'base64' });
+        treeEntries.push({ path: f.path, mode: '100644', type: 'blob', sha: blob.sha });
+      }
+      if (btn) btn.textContent = 'Publication…';
+      treeEntries.push({ path: 'data.json', mode: '100644', type: 'blob', content: JSON.stringify(data) });
+      const tree = await ghGitApi(cfg, '/git/trees', 'POST', { base_tree: baseCommit.tree.sha, tree: treeEntries });
+      const commit = await ghGitApi(cfg, '/git/commits', 'POST', {
+        message: `Mise à jour du guide (${new Date().toLocaleDateString('fr-FR')}) — ${photoFiles.length} photo(s)`,
+        tree: tree.sha, parents: [baseCommitSha],
+      });
+      await ghGitApi(cfg, '/git/refs/heads/main', 'PATCH', { sha: commit.sha });
+      const file = await ghFetch(cfg, 'GET');
+      window._fileSha = file.sha;
+    }
     async function saveToGitHub(cfg, data) {
       data._ts = Date.now(); // horodatage pour éviter que index.html écrase avec l'ancien data.json
+      const photoFiles = await migratePhotosToFiles(data); // réécrit data en place (photo/src/coverImage) si des data: URI sont trouvées
+
+      if (photoFiles.length) {
+        await commitPhotosAndData(cfg, data, photoFiles);
+        const site = getActiveSite();
+        if (site) { try { localStorage.setItem(cacheKeyFor(site.id), JSON.stringify(data)); } catch {} }
+        return;
+      }
+
+      // Chemin rapide (pas de nouvelle photo) : simple PUT sur data.json, comme avant.
       // JSON compact (pas d'indentation) : réduit la taille transmise, notable avec des albums photo lourds.
       const payload = { message: 'Mise à jour du guide (' + new Date().toLocaleDateString('fr-FR') + ')', content: toBase64(JSON.stringify(data)), sha: window._fileSha };
       let r;
