@@ -1,6 +1,14 @@
 *, *::before, *::after { box-sizing: border-box; }
 ::selection { background: #d6c5b0; }
 html { scroll-behavior: smooth; }
+/* Garde-fou anti-débordement horizontal mobile : Tailwind est chargé via CDN (compilation à
+   l'exécution) — le temps qu'il injecte ses règles, une image sans contrainte CSS peut brièvement
+   se rendre à sa largeur intrinsèque et dépasser le viewport, ce qui pousse Safari mobile à
+   dézoomer automatiquement pour compenser. Ce dézoom reste ensuite « collé » même une fois
+   l'image contrainte, obligeant à re-zoomer manuellement. Ces deux règles, en CSS statique (donc
+   actives dès le premier rendu, sans dépendre de Tailwind), éliminent la fenêtre à risque. */
+html, body { overflow-x: hidden; max-width: 100%; }
+img { max-width: 100%; }
 body { background: #e8e4df; font-family: 'Poppins', system-ui, sans-serif; }
 
 .font-display { font-family: 'Poppins', system-ui, sans-serif; }

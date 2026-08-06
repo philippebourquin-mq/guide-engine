@@ -81,9 +81,17 @@
     const cls = light
       ? 'inline-flex items-center gap-1 text-[9px] tracking-[0.15em] uppercase text-white/60 hover:text-white border-b border-white/25 hover:border-white pb-px transition-colors'
       : 'inline-flex items-center gap-1 text-[9px] tracking-[0.15em] uppercase text-stone-400 hover:text-stone-900 border-b border-stone-200 hover:border-stone-700 pb-px transition-colors';
-    return `<a href="${esc(item.url)}"${phone?'':' target="_blank" rel="noopener"'} class="${cls}">
+    return `<a href="${esc(item.url)}"${phone?'':' target="_blank" rel="noopener"'} class="${cls}" onclick="event.stopPropagation()">
       ${phone ? 'Appeler' : '↗ Voir'}
     </a>`;
+  }
+
+  // Attributs pour zoomer une photo hors album (clic/tap ouvre le même lightbox, sur une seule
+  // photo) : réutilise openLightbox tel quel en lui donnant un tableau data-album-photos d'une
+  // seule entrée — aucune nouvelle fonction, même mécanique que les cellules d'album.
+  function singlePhotoLightboxAttrs(src, caption) {
+    const pData = JSON.stringify([{ i: 0, src, caption: caption || '' }]);
+    return `data-idx="0" data-album-photos="${esc(pData)}" onclick="openLightbox(this)"`;
   }
 
   /* ── Cartes ─────────────────────────────────────────────────── */
@@ -96,7 +104,7 @@
     /* ── Bannière pleine largeur (legacy highlight + photo) ── */
     if (rawLayout === 'highlight' && hasPhoto) {
       return `
-    <article class="block-col-full block-row-2 relative img-zoom rounded-xl overflow-hidden card cursor-default" style="min-height:320px">
+    <article class="block-col-full block-row-2 relative img-zoom rounded-xl overflow-hidden card cursor-zoom-in" ${singlePhotoLightboxAttrs(item.photo, title)} style="min-height:320px">
       <img src="${esc(item.photo)}" alt="" class="img-zoom-el absolute inset-0 w-full h-full object-cover" style="object-position:${esc(pos)}" loading="lazy" />
       <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/5"></div>
       <div class="absolute inset-x-0 bottom-0 p-6 md:p-10">
@@ -129,7 +137,7 @@
     /* ── Carte avec photo ── */
     if (hasPhoto) {
       return `
-    <article class="${sizeCls} relative img-zoom rounded-xl overflow-hidden card cursor-default">
+    <article class="${sizeCls} relative img-zoom rounded-xl overflow-hidden card cursor-zoom-in" ${singlePhotoLightboxAttrs(item.photo, title)}>
       <img src="${esc(item.photo)}" alt="" class="img-zoom-el absolute inset-0 w-full h-full object-cover" style="object-position:${esc(pos)}" loading="lazy" />
       <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
       <div class="absolute inset-x-0 bottom-0 p-5 md:p-7">

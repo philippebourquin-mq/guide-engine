@@ -401,8 +401,8 @@
         Voir le site ↗
       </button>
       <button id="save-btn"
-        class="text-xs font-semibold bg-gray-900 text-white hover:bg-gray-700 active:bg-gray-800 rounded-md px-4 py-2 transition-colors whitespace-nowrap min-h-[36px]">
-        Publier
+        class="text-xs font-semibold bg-gray-900 text-white hover:bg-gray-700 active:bg-gray-800 rounded-md px-4 py-2 transition-colors whitespace-nowrap min-h-[36px] flex items-center gap-1.5">
+        <span data-save-spin class="hidden"></span><span data-save-label>Publier</span>
       </button>
     </div>
   </header>
@@ -630,18 +630,17 @@
     // l'API Git Data (blobs → tree → commit → ref) — un simple PUT sur data.json ne suffit plus
     // dès qu'on ajoute des fichiers binaires séparés.
     async function commitPhotosAndData(cfg, data, photoFiles) {
-      const btn = document.getElementById('save-btn');
       const ref = await ghGitApi(cfg, '/git/ref/heads/main', 'GET');
       const baseCommitSha = ref.object.sha;
       const baseCommit = await ghGitApi(cfg, `/git/commits/${baseCommitSha}`, 'GET');
       const treeEntries = [];
       for (let i = 0; i < photoFiles.length; i++) {
-        if (btn) btn.textContent = `Envoi des photos… ${i + 1}/${photoFiles.length}`;
+        setSaveLabel(`Envoi des photos… ${i + 1}/${photoFiles.length}`);
         const f = photoFiles[i];
         const blob = await ghGitApi(cfg, '/git/blobs', 'POST', { content: f.content, encoding: 'base64' });
         treeEntries.push({ path: f.path, mode: '100644', type: 'blob', sha: blob.sha });
       }
-      if (btn) btn.textContent = 'Publication…';
+      setSaveLabel('Publication…');
       treeEntries.push({ path: 'data.json', mode: '100644', type: 'blob', content: JSON.stringify(data) });
       const tree = await ghGitApi(cfg, '/git/trees', 'POST', { base_tree: baseCommit.tree.sha, tree: treeEntries });
       const commit = await ghGitApi(cfg, '/git/commits', 'POST', {
@@ -660,7 +659,7 @@
         await commitPhotosAndData(cfg, data, photoFiles);
         const site = getActiveSite();
         if (site) { try { localStorage.setItem(cacheKeyFor(site.id), JSON.stringify(data)); } catch {} }
-        return;
+        return photoFiles.length;
       }
 
       // Chemin rapide (pas de nouvelle photo) : simple PUT sur data.json, comme avant.
@@ -880,7 +879,7 @@
       document.getElementById('toast-icon').className   = isError ? 'text-red-400 text-sm' : 'text-green-400 text-sm';
       document.getElementById('toast-text').textContent = text;
       t.style.opacity = '1';
-      setTimeout(() => { t.style.opacity = '0'; }, isError ? 4000 : 2800);
+      setTimeout(() => { t.style.opacity = '0'; }, isError ? 4000 : 3600);
     }
 
     function setStatus(type, html) {
@@ -893,10 +892,16 @@
 
     function setSaveLoading(on) {
       const btn = document.getElementById('save-btn');
-      btn.disabled = on; btn.textContent = on ? 'Publication…' : 'Publier';
-      btn.className = on
-        ? 'text-xs font-semibold bg-gray-400 text-white rounded-md px-4 py-2 whitespace-nowrap min-h-[36px] cursor-not-allowed'
-        : 'text-xs font-semibold bg-gray-900 text-white hover:bg-gray-700 active:bg-gray-800 rounded-md px-4 py-2 transition-colors whitespace-nowrap min-h-[36px]';
+      btn.disabled = on;
+      btn.querySelector('[data-save-label]').textContent = on ? 'Publication…' : 'Publier';
+      btn.querySelector('[data-save-spin]').innerHTML = on ? SPIN_SVG : '';
+      btn.querySelector('[data-save-spin]').classList.toggle('hidden', !on);
+      btn.className = 'flex items-center gap-1.5 text-xs font-semibold rounded-md px-4 py-2 whitespace-nowrap min-h-[36px] transition-colors ' + (on
+        ? 'bg-gray-400 text-white cursor-not-allowed'
+        : 'bg-gray-900 text-white hover:bg-gray-700 active:bg-gray-800');
+    }
+    function setSaveLabel(text) {
+      document.getElementById('save-btn').querySelector('[data-save-label]').textContent = text;
     }
 
     function resizeImage(file) {
@@ -975,15 +980,32 @@
     const RESIZE_SVG = `<svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><path d="M2 10 L10 2 M6 10 L10 6"/></svg>`;
     const PHOTO_SVG  = `<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="12" rx="2"/><circle cx="10" cy="11" r="3"/><path d="M7 5l1.2-2h3.6L13 5"/></svg>`;
     const OPT_SVG    = `<svg viewBox="0 0 20 20" width="14" height="14" fill="#fff"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg>`;
+    const SPIN_SVG   = `<svg class="animate-spin" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`;
 
     function mkBadge(cls, title, html) {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'admin-handle ' + cls; b.title = title; b.innerHTML = html;
       return b;
     }
+    // Bascule un contrôle en état « occupé » (spinner + désactivé) pendant un traitement photo
+    // (redimensionnement/encodage) qui peut prendre un instant perceptible — sans ça le bouton
+    // semble inerte entre le choix du fichier et le résultat visible.
+    function setBusy(el, on) {
+      if (!el) return;
+      if (on) {
+        if (el.dataset._busyOrig === undefined) el.dataset._busyOrig = el.innerHTML;
+        el.innerHTML = SPIN_SVG;
+        el.style.pointerEvents = 'none';
+        if ('disabled' in el) el.disabled = true;
+      } else {
+        if (el.dataset._busyOrig !== undefined) { el.innerHTML = el.dataset._busyOrig; delete el.dataset._busyOrig; }
+        el.style.pointerEvents = '';
+        if ('disabled' in el) el.disabled = false;
+      }
+    }
 
     // Sélection d'un fichier photo, sans dépendre d'un <input> présent dans le DOM au préalable
-    function pickPhotoFile(cb) {
+    function pickPhotoFile(cb, triggerEl) {
       const inp = document.createElement('input');
       inp.type = 'file'; inp.accept = 'image/*';
       inp.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
@@ -991,7 +1013,8 @@
       inp.addEventListener('change', async () => {
         const f = inp.files[0]; inp.remove();
         if (!f) return;
-        try { cb(await resizeImage(f)); } catch {}
+        setBusy(triggerEl, true);
+        try { cb(await resizeImage(f)); } catch {} finally { setBusy(triggerEl, false); }
       });
       inp.click();
     }
@@ -1115,7 +1138,10 @@
     document.getElementById('item-opt-photo-input').addEventListener('change', async e => {
       const f = e.target.files[0]; e.target.value = '';
       if (!f || !_itemOpt) return;
-      try { _itemOpt.item.photo = await resizeImage(f); _itemOpt.onChange('photo'); closeItemOptions(); } catch {}
+      const label = e.target.previousElementSibling;
+      setBusy(label, true);
+      try { _itemOpt.item.photo = await resizeImage(f); _itemOpt.onChange('photo'); closeItemOptions(); }
+      catch {} finally { setBusy(label, false); }
     });
     document.getElementById('item-opt-unsplash-btn').addEventListener('click', () => {
       if (!_itemOpt) return;
@@ -1251,11 +1277,12 @@
         document.body.appendChild(inp);
         inp.addEventListener('change', async () => {
           const f = inp.files[0]; inp.remove(); if (!f) return;
+          setBusy(photoBtn, true);
           try {
             const r = await resizeImageForAlbum(f);
             photo.src = r.src; photo.aspect = r.aspect;
             ctx.rerender();
-          } catch {}
+          } catch {} finally { setBusy(photoBtn, false); }
         });
         inp.click();
       });
@@ -1302,14 +1329,15 @@
             class="w-8 h-8 p-1.5 rounded-md text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer">
             ${illus(iconKey)}
           </button>
-          <button type="button" data-collapse title="Développer / Réduire"
-            style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:none;border:none;cursor:pointer;flex-shrink:0;touch-action:manipulation">
+          <span data-collapse title="Développer / Réduire"
+            style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;pointer-events:none">
             <span data-chevron style="display:inline-block;width:7px;height:7px;border-right:1.5px solid #a8a29e;border-bottom:1.5px solid #a8a29e;transform:rotate(45deg);transition:transform .2s;margin-top:-3px"></span>
-          </button>
+          </span>
           <button type="button" data-sec-delete title="Supprimer la section"
             style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:none;border:none;cursor:pointer;color:#c7c2bd;font-size:17px;line-height:1;transition:color .15s">×</button>
         </div>
       `;
+      header.style.cursor = 'pointer';
       card.appendChild(header);
 
       const body = document.createElement('div');
@@ -1347,25 +1375,27 @@
       card._rerender = rerender;
       rerender();
 
-      header.querySelector('[data-icon-btn]').addEventListener('click', () => {
+      header.querySelector('[data-icon-btn]').addEventListener('click', e => {
+        e.stopPropagation();
         openIconPicker(card.dataset.sectionIcon, key => {
           card.dataset.sectionIcon = key;
           header.querySelector('[data-icon-btn]').innerHTML = illus(key);
         });
       });
-      const collapseBtn = header.querySelector('[data-collapse]');
-      const chevron = collapseBtn.querySelector('[data-chevron]');
+      header.querySelector('[data-drag-handle]').addEventListener('click', e => e.stopPropagation());
+      header.querySelector('h2[data-field="section-title"]').addEventListener('click', e => e.stopPropagation());
+      const chevron = header.querySelector('[data-chevron]');
       function setCollapsed(on) {
         body.style.display = on ? 'none' : 'block';
         if (chevron) chevron.style.transform = on ? 'rotate(-45deg)' : 'rotate(45deg)';
       }
       setCollapsed(startCollapsed);
-      collapseBtn.onclick = function(e) {
-        e.stopPropagation();
-        setCollapsed(body.style.display !== 'none');
-      };
+      // Toute la ligne d'en-tête bascule le repli — sauf les contrôles avec leur propre action
+      // (poignée, titre éditable, icône, suppression), qui stoppent la propagation ci-dessus.
+      header.addEventListener('click', () => setCollapsed(body.style.display !== 'none'));
       let _deleteArmed = false, _deleteTimer = null;
-      header.querySelector('[data-sec-delete]').addEventListener('click', function() {
+      header.querySelector('[data-sec-delete]').addEventListener('click', function(e) {
+        e.stopPropagation();
         const btn = this;
         if (!_deleteArmed) {
           _deleteArmed = true;
@@ -1419,13 +1449,14 @@
             class="w-8 h-8 p-1.5 rounded-md text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer">
             ${illus(iconKey)}
           </button>
-          <button type="button" data-collapse title="Développer / Réduire"
-            style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:none;border:none;cursor:pointer;flex-shrink:0;touch-action:manipulation">
+          <span data-collapse title="Développer / Réduire"
+            style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;pointer-events:none">
             <span data-chevron style="display:inline-block;width:7px;height:7px;border-right:1.5px solid #a8a29e;border-bottom:1.5px solid #a8a29e;transform:rotate(45deg);transition:transform .2s;margin-top:-3px"></span>
-          </button>
+          </span>
           <button type="button" data-sec-delete title="Supprimer la section"
             style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:none;border:none;cursor:pointer;color:#c7c2bd;font-size:17px;line-height:1;transition:color .15s">×</button>
         </div>`;
+      header.style.cursor = 'pointer';
       card.appendChild(header);
 
       const body = document.createElement('div');
@@ -1457,8 +1488,11 @@
         addTile.textContent = '+';
         addTile.addEventListener('click', () => {
           pickAlbumFiles(async files => {
-            for (const file of files) {
-              try { card._albumPhotos.push(await resizeImageForAlbum(file)); } catch {}
+            addTile.disabled = true;
+            for (let i = 0; i < files.length; i++) {
+              addTile.textContent = files.length > 1 ? `${i + 1}/${files.length}` : '';
+              if (files.length === 1) addTile.innerHTML = SPIN_SVG;
+              try { card._albumPhotos.push(await resizeImageForAlbum(files[i])); } catch {}
             }
             rerender();
           });
@@ -1469,19 +1503,20 @@
       card._rerender = rerender;
       rerender();
 
-      const collapseBtn = header.querySelector('[data-collapse]');
-      const chevron = collapseBtn.querySelector('[data-chevron]');
+      const chevron = header.querySelector('[data-chevron]');
       function setCollapsed(on) {
         body.style.display = on ? 'none' : 'block';
         if (chevron) chevron.style.transform = on ? 'rotate(-45deg)' : 'rotate(45deg)';
       }
       setCollapsed(startCollapsed);
-      collapseBtn.onclick = function(e) {
-        e.stopPropagation();
-        setCollapsed(body.style.display !== 'none');
-      };
+      // Toute la ligne d'en-tête bascule le repli — sauf les contrôles avec leur propre action
+      // (poignée, titre éditable, icône, suppression), qui stoppent la propagation ci-dessous.
+      header.addEventListener('click', () => setCollapsed(body.style.display !== 'none'));
+      header.querySelector('[data-drag-handle]').addEventListener('click', e => e.stopPropagation());
+      header.querySelector('h2[data-field="section-title"]').addEventListener('click', e => e.stopPropagation());
 
-      header.querySelector('[data-icon-btn]').addEventListener('click', () => {
+      header.querySelector('[data-icon-btn]').addEventListener('click', e => {
+        e.stopPropagation();
         openIconPicker(card.dataset.sectionIcon, key => {
           card.dataset.sectionIcon = key;
           header.querySelector('[data-icon-btn]').innerHTML = illus(key);
@@ -1489,7 +1524,8 @@
       });
 
       let _deleteArmed = false, _deleteTimer = null;
-      header.querySelector('[data-sec-delete]').addEventListener('click', function() {
+      header.querySelector('[data-sec-delete]').addEventListener('click', function(e) {
+        e.stopPropagation();
         const btn = this;
         if (!_deleteArmed) {
           _deleteArmed = true;
@@ -1659,7 +1695,7 @@
     heroPhotoBadge.style.top = '10px'; heroPhotoBadge.style.left = ''; heroPhotoBadge.style.right = '10px'; heroPhotoBadge.style.bottom = '';
     heroPhotoBadge.addEventListener('click', e => {
       e.stopPropagation();
-      pickPhotoFile(dataUrl => { _metaState.coverImage = dataUrl; renderHeroMirror(); });
+      pickPhotoFile(dataUrl => { _metaState.coverImage = dataUrl; renderHeroMirror(); }, heroPhotoBadge);
     });
     heroMirrorEl.appendChild(heroPhotoBadge);
     const heroOptBadge = mkBadge('admin-options-badge', 'Options de la couverture', OPT_SVG);
@@ -1939,7 +1975,15 @@
     document.getElementById('save-btn').addEventListener('click', async () => {
       const cfg = effectiveCfg(); if (!cfg) { showToast('Aucune destination sélectionnée', true); return; }
       setSaveLoading(true);
-      try { await saveToGitHub(cfg, collectData()); showToast('Publié · Le site sera mis à jour dans ~1 min', false); }
+      try {
+        const photoCount = await saveToGitHub(cfg, collectData());
+        showToast(
+          photoCount
+            ? `Publié · ${photoCount} photo${photoCount > 1 ? 's' : ''} envoyée${photoCount > 1 ? 's' : ''} — le site va se mettre à jour`
+            : 'Publié · le site va se mettre à jour dans quelques instants',
+          false
+        );
+      }
       catch(e) { showToast('Erreur : ' + e.message, true); }
       finally { setSaveLoading(false); }
     });
