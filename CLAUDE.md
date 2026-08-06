@@ -134,6 +134,17 @@ Fond du lightbox en `#000` opaque (pas `rgba(0,0,0,.97)`) — à cette opacité,
 
 `effectiveCfg()` fusionne le compte (token) et la destination active (owner/repo) pour les appels GitHub — c'est ce qui est passé à `ghFetch`/`loadFromGitHub`/`saveToGitHub`.
 
+### Synchronisation multi-appareil de `mtq-gh-sites`
+
+`mtq-gh-sites` est du localStorage : purement local à l'appareil/navigateur. La récupération de compte par mot de passe (`recoverAccountByPassword`) ne s'exécute qu'**une fois**, au moment du login sur un appareil qui n'a pas encore de compte local — un appareil déjà connecté ne relit plus jamais `account.enc.json` après coup. Sans garde-fou, deux symptômes : une destination créée sur un appareil n'apparaît jamais sur un autre déjà connecté, et pire, publier depuis cet appareil « en retard » écrase la liste distante et fait disparaître cette destination pour tout le monde (dernier `publishAccountBlob` gagne).
+
+`syncSitesWithRemote()` corrige ça : déchiffre `account.enc.json` avec le mot de passe déjà en local (aucune saisie requise), et **fusionne** (jamais un simple remplacement) avec `mtq-gh-sites` local par clé `owner/repo` — une destination absente d'un des deux côtés est conservée, pas écrasée. Appelée à trois endroits :
+- en tout premier dans `initAdmin()` (donc à chaque chargement de l'admin, rattrape les destinations créées ailleurs),
+- au début de `publishAccountBlob()` (donc avant *toute* publication du compte — jamais de publication sans fusion préalable, pour ne jamais régresser la liste distante),
+- à l'ouverture de `openManageSitesModal()`/`openSitesModal()` (liste à jour sans recharger la page).
+
+**Ne jamais faire publier `mtq-gh-sites` sans passer par `syncSitesWithRemote()` avant** — c'est ce qui garantit qu'aucun appareil ne peut faire disparaître une destination créée par un autre.
+
 ### Ajouter une destination
 
 Deux voies dans le modal « Nouvelle destination » :

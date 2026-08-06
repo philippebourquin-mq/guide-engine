@@ -742,9 +742,43 @@
       return resp.json();
     }
     // Chiffre {account, sites, active} et publie/actualise account.enc.json dans guide-engine.
+    // Fusionne mtq-gh-sites local avec la liste publiée à distance (déchiffrée avec le mot de
+    // passe déjà connu localement, sans redemander quoi que ce soit) — nécessaire car un appareil
+    // déjà connecté ne relit jamais le compte distant après le login initial : sans cette fusion,
+    // une destination créée sur un autre appareil n'apparaît jamais ici, et pire, publier depuis
+    // cet appareil écraserait la liste distante et ferait disparaître cette destination pour tout
+    // le monde. Fusion par clé owner/repo (pas par id, qui peut différer selon l'appareil).
+    async function syncSitesWithRemote() {
+      const acc = loadConfig();
+      if (!acc?.password) return false;
+      try {
+        const resp = await fetch(
+          `https://raw.githubusercontent.com/${ENGINE_OWNER}/${ENGINE_REPO}/main/${ACCOUNT_BLOB_PATH}?t=${Date.now()}`,
+          { cache: 'no-store' }
+        );
+        if (!resp.ok) return false;
+        const blob = await resp.json();
+        const remote = await decryptAccountBlob(acc.password, blob);
+        const localSites = loadSites();
+        const byKey = new Map();
+        [...(remote.sites || []), ...localSites].forEach(s => {
+          const key = `${s.owner}/${s.repo}`;
+          const existing = byKey.get(key);
+          if (!existing || (!existing.color && s.color)) byKey.set(key, s);
+        });
+        const merged = [...byKey.values()];
+        const changed = JSON.stringify(localSites.map(s => s.id).sort()) !== JSON.stringify(merged.map(s => s.id).sort());
+        if (changed) {
+          saveSites(merged);
+          if (!getActiveSiteId() && merged[0]) setActiveSiteId(merged[0].id);
+        }
+        return changed;
+      } catch { return false; }
+    }
     async function publishAccountBlob() {
       const acc = loadConfig();
       if (!acc?.password || !acc?.token) return;
+      await syncSitesWithRemote(); // ne jamais publier sans avoir d'abord fusionné avec ce qui existe déjà à distance
       const blob = await encryptAccountBlob(acc.password, { account: acc, sites: loadSites(), active: getActiveSiteId() });
       const body = { message: 'Sync compte admin', content: toBase64(JSON.stringify(blob)) };
       const existing = await ghContentsFetch(ENGINE_OWNER, ENGINE_REPO, ACCOUNT_BLOB_PATH, acc.token, 'GET');
@@ -2224,10 +2258,12 @@
         btn.addEventListener('click', () => removeSiteFromList(btn.dataset.unregisterOnly));
       });
     }
-    function openManageSitesModal() {
+    async function openManageSitesModal() {
       _recolorSiteId = null; _deleteSiteId = null;
       renderManageSitesList();
       document.getElementById('manage-sites-modal').classList.remove('hidden');
+      // Rattrape une destination créée depuis un autre appareil avant d'afficher la liste à jour
+      if (await syncSitesWithRemote()) { renderManageSitesList(); renderSiteSelect(); }
     }
     document.getElementById('manage-sites-btn').addEventListener('click', openManageSitesModal);
     document.getElementById('manage-sites-close').addEventListener('click', () => document.getElementById('manage-sites-modal').classList.add('hidden'));
@@ -2256,6 +2292,7 @@
       }));
     }
     async function openSitesModal() {
+      await syncSitesWithRemote(); // pour une suggestion de couleur et un propriétaire par défaut à jour
       document.getElementById('site-label').value = '';
       const active = getActiveSite();
       document.getElementById('site-owner').value = active?.owner || '';
@@ -2334,6 +2371,7 @@
 
     /* ── Init ────────────────────────────────────────────────────── */
     async function initAdmin() {
+      await syncSitesWithRemote(); // rattrape les destinations créées depuis un autre appareil
       const cfg = effectiveCfg();
       if (!cfg) {
         // Compte connecté mais aucune destination enregistrée
