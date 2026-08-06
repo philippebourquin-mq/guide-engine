@@ -1776,9 +1776,38 @@
     });
     heroMirrorEl.appendChild(heroOptBadge);
 
+    /* ── Chemins de photo relatifs ↔ absolus (admin sur une autre origine) ──
+       Un chemin relatif (./photos/xxx.jpg, voir migratePhotosToFiles) est correct pour le site
+       publié : même dépôt, même origine que index.html. Mais admin.html vit sur l'origine de
+       guide-engine, un dépôt différent de celui de la destination éditée — un <img src="./photos/xxx.jpg">
+       dans l'admin se résout donc contre guide-engine (404, image cassée) au lieu du dépôt de la
+       destination. On résout en URL absolue pour l'affichage (resolvePhotosInData, appelé par
+       renderAdmin), et on relativise à nouveau juste avant publication (collectData) pour que
+       data.json garde des chemins relatifs portables — data:/http(s) déjà absolus, laissés intacts. */
+    function resolvePhotoUrl(cfg, src) {
+      if (!src || !cfg || src.startsWith('http') || src.startsWith('data:')) return src;
+      return `https://${cfg.owner}.github.io/${cfg.repo}/${src.replace(/^\.\//, '')}`;
+    }
+    function relativizePhotoUrl(cfg, src) {
+      if (!src || !cfg) return src;
+      const prefix = `https://${cfg.owner}.github.io/${cfg.repo}/`;
+      return src.startsWith(prefix) ? './' + src.slice(prefix.length) : src;
+    }
+    function resolvePhotosInData(data, cfg) {
+      if (!cfg) return data;
+      const clone = JSON.parse(JSON.stringify(data));
+      if (clone.meta) clone.meta.coverImage = resolvePhotoUrl(cfg, clone.meta.coverImage);
+      (clone.sections || []).forEach(s => {
+        (s.items  || []).forEach(it => { it.photo = resolvePhotoUrl(cfg, it.photo); });
+        (s.photos || []).forEach(p  => { p.src    = resolvePhotoUrl(cfg, p.src); });
+      });
+      return clone;
+    }
+
     /* ── Collecte ────────────────────────────────────────────────── */
     function collectData() {
-      return {
+      const cfg = effectiveCfg();
+      const data = {
         meta: {
           title:               _metaState.title,
           subtitle:            _metaState.subtitle,
@@ -1792,7 +1821,9 @@
             title: card.querySelector('[data-field="section-title"]').textContent.trim(),
           };
           if (card.dataset.sectionType === 'album') {
-            return { ...base, type: 'album', photos: card._albumPhotos || [] };
+            // Copie (pas la référence) : le pas de relativisation ci-dessous ne doit pas muter
+            // card._albumPhotos, qui reste la source de vérité de l'édition (URL absolues).
+            return { ...base, type: 'album', photos: (card._albumPhotos || []).map(p => ({ ...p })) };
           }
           return {
             ...base,
@@ -1810,10 +1841,19 @@
           };
         }),
       };
+      // Repasse en chemins relatifs (voir resolvePhotoUrl/relativizePhotoUrl) avant publication —
+      // card._items/_albumPhotos ont des URL absolues (nécessaires pour l'affichage dans l'admin).
+      data.meta.coverImage = relativizePhotoUrl(cfg, data.meta.coverImage);
+      data.sections.forEach(s => {
+        if (s.type === 'album') s.photos.forEach(p => { p.src = relativizePhotoUrl(cfg, p.src); });
+        else s.items.forEach(it => { it.photo = relativizePhotoUrl(cfg, it.photo); });
+      });
+      return data;
     }
 
     /* ── Rendu admin ─────────────────────────────────────────────── */
     function renderAdmin(data) {
+      data = resolvePhotosInData(data, effectiveCfg());
       _metaState = {
         title: data.meta.title || '',
         subtitle: data.meta.subtitle || '',
