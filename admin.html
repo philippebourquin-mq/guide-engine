@@ -1116,8 +1116,23 @@
         let cols = startCols, rows = startRows;
         function move(ev) {
           const dx = ev.clientX - startX, dy = ev.clientY - startY;
-          cols = Math.min(3, Math.max(1, Math.round(startCols + dx / colUnit)));
-          rows = Math.min(3, Math.max(1, Math.round(startRows + dy / rowUnit)));
+          const colDelta = dx / colUnit, rowDelta = dy / rowUnit;
+          // Poignée unique au coin : un drag pour "juste élargir" part quasi toujours un peu en
+          // diagonale (l'œil suit le coin), ce qui — avec colUnit≈rowUnit sur une photo à peu
+          // près carrée — pouvait faire passer aussi les lignes (1x2 se retrouvait forcé en 2x2).
+          // Un axe nettement dominant (>1.6× l'autre) n'affecte que lui-même ; les deux ne
+          // bougent ensemble que sur un geste franchement diagonal.
+          const DOMINANCE = 1.6;
+          let newCols = startCols, newRows = startRows;
+          if (Math.abs(colDelta) >= Math.abs(rowDelta) * DOMINANCE) {
+            newCols = Math.min(3, Math.max(1, Math.round(startCols + colDelta)));
+          } else if (Math.abs(rowDelta) >= Math.abs(colDelta) * DOMINANCE) {
+            newRows = Math.min(3, Math.max(1, Math.round(startRows + rowDelta)));
+          } else {
+            newCols = Math.min(3, Math.max(1, Math.round(startCols + colDelta)));
+            newRows = Math.min(3, Math.max(1, Math.round(startRows + rowDelta)));
+          }
+          cols = newCols; rows = newRows;
           ghost.style.width  = (colUnit * cols) + 'px';
           ghost.style.height = (rowUnit * rows) + 'px';
         }
